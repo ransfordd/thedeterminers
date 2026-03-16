@@ -105,7 +105,7 @@ export async function signupClient(prev: SignupState, formData: FormData): Promi
     revalidatePath("/login");
     redirect("/login?success=1");
   } catch (e) {
-    if (e && typeof e === "object" && (e as { digest?: string }).digest === "NEXT_REDIRECT") throw e;
+    if (e && typeof e === "object" && (e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
     console.error("Signup error:", e);
     return { error: "Registration failed. Please try again." };
   }

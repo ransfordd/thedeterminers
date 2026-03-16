@@ -1,7 +1,7 @@
-# Local development: PostgreSQL + Redis only.
+# Full stack: Next.js app + PostgreSQL + Redis.
 # Run with: docker compose up -d
-# Postgres is on port 5433 to avoid conflict with a local PostgreSQL on 5432.
-# Use DATABASE_URL in .env with port 5433.
+# App: http://localhost:3000
+# Postgres (host): port 5433 to avoid conflict with local PostgreSQL on 5432.
 
 services:
   postgres:
@@ -16,6 +16,11 @@ services:
       - "5433:5432"
     volumes:
       - susu_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U susu -d susu_system"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -25,6 +30,26 @@ services:
       - "6379:6379"
     volumes:
       - susu_redisdata:/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: susu-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://susu:susu_local@postgres:5432/susu_system
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma db push &&
+             npx prisma db seed &&
+             exec node server.js"
 
 volumes:
   susu_pgdata: {}

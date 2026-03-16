@@ -19,7 +19,7 @@ const RELATIONSHIPS = [
 
 const inputClass =
   "login-input w-full border border-[#e1e5e9] rounded-[10px] px-4 py-2.5 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/20 outline-none transition-all";
-const labelClass = "block text-sm font-semibold text-gray-800 mb-1.5";
+const labelClass = "block text-sm font-semibold text-[#374151] mb-1.5";
 
 export function SignupForm({
   agentOptions,
@@ -32,7 +32,7 @@ export function SignupForm({
   return (
     <form action={formAction} className="space-y-6">
       {state?.error && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-200 text-sm">
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-100 border-2 border-red-400 text-red-900 text-sm font-medium">
           <i className="fas fa-exclamation-circle flex-shrink-0" />
           <span>{state.error}</span>
         </div>
@@ -40,7 +40,7 @@ export function SignupForm({
 
       {/* Personal */}
       <section className="space-y-4">
-        <h5 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h5 className="text-lg font-semibold text-[#111827] flex items-center gap-2">
           <i className="fas fa-user text-[#667eea]" /> Personal Information
         </h5>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -105,7 +105,7 @@ export function SignupForm({
 
       {/* Address */}
       <section className="space-y-4">
-        <h5 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h5 className="text-lg font-semibold text-[#111827] flex items-center gap-2">
           <i className="fas fa-map-marker-alt text-[#667eea]" /> Address Information
         </h5>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -135,7 +135,7 @@ export function SignupForm({
 
       {/* Next of Kin */}
       <section className="space-y-4">
-        <h5 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h5 className="text-lg font-semibold text-[#111827] flex items-center gap-2">
           <i className="fas fa-users text-[#667eea]" /> Next of Kin <span className="text-red-500">*</span>
         </h5>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -169,7 +169,7 @@ export function SignupForm({
 
       {/* Susu */}
       <section className="space-y-4">
-        <h5 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h5 className="text-lg font-semibold text-[#111827] flex items-center gap-2">
           <i className="fas fa-piggy-bank text-[#667eea]" /> Susu Information
         </h5>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

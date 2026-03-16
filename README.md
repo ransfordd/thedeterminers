@@ -67,6 +67,24 @@ You can log in with either **email** or **username** (e.g. the email above, or t
 5. **When you’re done testing**  
    Stop containers: `docker compose down`. To deploy online, push your code and set production env vars (and a production Postgres/Redis) on your host.
 
+### Deploy full stack on Coolify
+
+To get **app + PostgreSQL + Redis** from one deploy on Coolify, use the **Docker Compose** build pack so Coolify runs your `docker-compose.yml` (all three services).
+
+1. **Push** your repo (e.g. the `next-app` folder as the root of the repo, or the whole repo with `next-app` as base directory).
+2. In **Coolify**: Create New Resource → connect your Git repo.
+3. **Build pack**: Change from Nixpacks to **Docker Compose**.
+4. **Configure**:
+   - **Base Directory**: `next-app` (if your repo root is the parent of `next-app`; use `/` if the repo root is `next-app`).
+   - **Docker Compose Location**: `docker-compose.yml`.
+5. **Deploy**. Coolify will build the app image and start `postgres`, `redis`, and `app`.
+6. **Domain**: In Coolify, open the **app** service and assign a domain (e.g. `https://yourdomain.com`). Add the port `3000` so the proxy routes to the app (e.g. `https://yourdomain.com:3000` in the domain field; Coolify uses the port only for internal routing and serves the site on 80/443).
+7. **Environment** (app service): Set in Coolify’s UI:
+   - `NEXTAUTH_SECRET`: long random string (e.g. `openssl rand -base64 32`).
+   - `NEXTAUTH_URL`: your public URL (e.g. `https://yourdomain.com`).
+
+After the first deploy, the app runs `prisma db push` and `prisma db seed` on startup, so the database is migrated and seeded automatically.
+
 ### Seed fails: "credentials for susu are not valid"
 
 PostgreSQL was likely initialized earlier with different credentials (e.g. an old Docker volume). Reset the database so it re-initializes with the credentials from `docker-compose.yml`:

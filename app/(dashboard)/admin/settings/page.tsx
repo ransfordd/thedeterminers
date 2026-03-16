@@ -8,6 +8,7 @@ import { BrandingSection } from "./BrandingSection";
 import { HolidayManagement } from "./HolidayManagement";
 import { SendNotificationForm } from "./SendNotificationForm";
 import { RecentNotifications } from "./RecentNotifications";
+import { DeploymentCard } from "./DeploymentCard";
 
 type PageProps = { searchParams: Promise<{ success?: string; error?: string }> };
 
@@ -95,6 +96,10 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
           </>
         )}
       </ModernCard>
+
+      <div className="mt-6">
+        <DeploymentCard />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         <ModernCard
