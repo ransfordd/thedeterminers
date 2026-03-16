@@ -21,6 +21,8 @@ import {
   ActionCard,
   ModernCard,
 } from "@/components/dashboard";
+import type { DataTableColumn } from "@/components/dashboard/DataTable";
+import type { AgentPerformanceRow } from "@/types/dashboard";
 import { DashboardReportFilter } from "./DashboardReportFilter";
 import { Suspense } from "react";
 
@@ -76,12 +78,12 @@ export default async function AdminDashboardPage() {
     { key: "amount", header: "Amount", render: (r: { amount: number }) => <strong>{formatCurrency(r.amount)}</strong> },
   ];
 
-  const agentColumns = [
+  const agentColumns: DataTableColumn<AgentPerformanceRow>[] = [
     { key: "agentCode", header: "Agent Code" },
     { key: "agentName", header: "Name" },
-    { key: "clientCount", header: "Clients", render: (r: { clientCount: number }) => r.clientCount.toLocaleString() },
-    { key: "loansManaged", header: "Loans", render: (r: { loansManaged: number }) => r.loansManaged.toLocaleString() },
-    { key: "totalCollections", header: "Total Collections", render: (r: { totalCollections: number }) => formatCurrency(r.totalCollections) },
+    { key: "clientCount", header: "Clients", render: (r) => r.clientCount.toLocaleString() },
+    { key: "loansManaged", header: "Loans", render: (r) => r.loansManaged.toLocaleString() },
+    { key: "totalCollections", header: "Total Collections", render: (r) => formatCurrency(r.totalCollections) },
   ];
 
   return (
