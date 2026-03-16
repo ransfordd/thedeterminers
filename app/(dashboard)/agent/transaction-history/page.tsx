@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { getAgentByUserId } from "@/lib/dashboard";
+import { PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ModernCard, DataTable, StatCard } from "@/components/dashboard";
 import { formatCurrency } from "@/lib/dashboard";
@@ -112,7 +113,7 @@ export default async function AgentTransactionHistoryPage({
   };
 
   const loanPaymentWhere = {
-    paymentStatus: { in: ["paid", "partial"] },
+    paymentStatus: { in: [PaymentStatus.paid, PaymentStatus.partial] },
     loan: { clientId: { in: clientIds } },
     ...(filters.dateFrom != null || filters.dateTo != null
       ? {
