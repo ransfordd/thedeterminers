@@ -20,6 +20,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+RUN apk add --no-cache openssl
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
@@ -31,6 +33,9 @@ COPY --from=builder /app/.next/static ./.next/static
 
 # Need full node_modules for prisma db push + db seed at runtime
 COPY --from=builder /app/node_modules ./node_modules
+
+# nextjs must own these so prisma db push / db seed can run at container start
+RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 EXPOSE 3000
