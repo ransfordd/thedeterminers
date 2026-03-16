@@ -329,7 +329,7 @@ export default async function AdminDashboardPage() {
         <SectionTitle icon={<i className="fas fa-user-chart text-cyan-500" />}>
           Agent Performance
         </SectionTitle>
-        <DataTable
+        <DataTable<AgentPerformanceRow>
           columns={agentColumns}
           data={agentPerformance}
           caption="Performance metrics for the last 30 days"
