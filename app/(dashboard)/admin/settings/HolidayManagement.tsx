@@ -113,7 +113,9 @@ export function HolidayManagement({ holidays }: { holidays: Holiday[] }) {
                   </td>
                   <td className="py-2">
                     <form
-                      action={deleteHoliday}
+                      action={async (formData: FormData) => {
+                        await deleteHoliday(formData);
+                      }}
                       onSubmit={(e) => {
                         if (!confirm("Are you sure you want to delete this holiday?")) {
                           e.preventDefault();

@@ -25,13 +25,25 @@ export function ClientActions({ row, isAdmin, returnTo = "/admin/clients" }: { r
         <i className="fas fa-edit" />
       </Link>
       {row.status === "active" ? (
-        <form action={toggleClientStatusForm} className="inline" onSubmit={(e) => !confirm("Are you sure you want to deactivate this client?") && e.preventDefault()}>
+        <form
+          action={async (formData: FormData) => {
+            await toggleClientStatusForm(undefined, formData);
+          }}
+          className="inline"
+          onSubmit={(e) => !confirm("Are you sure you want to deactivate this client?") && e.preventDefault()}
+        >
           <input type="hidden" name="clientId" value={row.id} />
           <input type="hidden" name="returnTo" value={returnTo} />
           <SubmitButton title="Deactivate Client" icon="fa-user-slash" variant="danger" />
         </form>
       ) : (
-        <form action={toggleClientStatusForm} className="inline" onSubmit={(e) => !confirm("Are you sure you want to activate this client?") && e.preventDefault()}>
+        <form
+          action={async (formData: FormData) => {
+            await toggleClientStatusForm(undefined, formData);
+          }}
+          className="inline"
+          onSubmit={(e) => !confirm("Are you sure you want to activate this client?") && e.preventDefault()}
+        >
           <input type="hidden" name="clientId" value={row.id} />
           <input type="hidden" name="returnTo" value={returnTo} />
           <SubmitButton title="Activate Client" icon="fa-user-check" variant="success" />

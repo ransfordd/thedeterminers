@@ -163,7 +163,9 @@ export function TransactionRowActions({
       </a>
       {isManual && deleteAction ? (
         <form
-          action={deleteAction}
+          action={async (formData: FormData) => {
+            await deleteAction(formData);
+          }}
           className="inline"
           onSubmit={(e) => {
             if (!confirm("Are you sure you want to delete this transaction? This action cannot be undone.")) {

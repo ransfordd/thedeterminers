@@ -25,12 +25,24 @@ export function AgentActions({ row, isAdmin }: { row: Row; isAdmin: boolean }) {
         <i className="fas fa-edit" />
       </Link>
       {row.status === "active" ? (
-        <form action={toggleAgentStatusForm} className="inline" onSubmit={(e) => !confirm("Are you sure you want to deactivate this agent?") && e.preventDefault()}>
+        <form
+          action={async (formData: FormData) => {
+            await toggleAgentStatusForm(undefined, formData);
+          }}
+          className="inline"
+          onSubmit={(e) => !confirm("Are you sure you want to deactivate this agent?") && e.preventDefault()}
+        >
           <input type="hidden" name="agentId" value={row.id} />
           <SubmitButton title="Deactivate Agent" icon="fa-user-slash" variant="danger" />
         </form>
       ) : (
-        <form action={toggleAgentStatusForm} className="inline" onSubmit={(e) => !confirm("Are you sure you want to activate this agent?") && e.preventDefault()}>
+        <form
+          action={async (formData: FormData) => {
+            await toggleAgentStatusForm(undefined, formData);
+          }}
+          className="inline"
+          onSubmit={(e) => !confirm("Are you sure you want to activate this agent?") && e.preventDefault()}
+        >
           <input type="hidden" name="agentId" value={row.id} />
           <SubmitButton title="Activate Agent" icon="fa-user-check" variant="success" />
         </form>
