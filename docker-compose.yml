@@ -1,0 +1,31 @@
+# Local development: PostgreSQL + Redis only.
+# Run with: docker compose up -d
+# Postgres is on port 5433 to avoid conflict with a local PostgreSQL on 5432.
+# Use DATABASE_URL in .env with port 5433.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: susu-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: susu
+      POSTGRES_PASSWORD: susu_local
+      POSTGRES_DB: susu_system
+    ports:
+      - "5433:5432"
+    volumes:
+      - susu_pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: susu-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - susu_redisdata:/data
+
+volumes:
+  susu_pgdata: {}
+  susu_redisdata: {}

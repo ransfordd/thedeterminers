@@ -1,0 +1,622 @@
+// Susu System - PostgreSQL schema (migrated from MySQL)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  business_admin
+  manager
+  agent
+  client
+}
+
+enum UserStatus {
+  active
+  inactive
+  suspended
+}
+
+enum AgentStatus {
+  active
+  inactive
+}
+
+enum DepositType {
+  fixed_amount
+  flexible_amount
+}
+
+enum RiskClassification {
+  low
+  medium
+  high
+}
+
+enum ClientStatus {
+  active
+  inactive
+  suspended
+}
+
+enum CycleStatus {
+  active
+  completed
+  defaulted
+  cancelled
+}
+
+enum CollectionStatus {
+  pending
+  collected
+  missed
+  partial
+}
+
+enum InterestType {
+  flat
+  reducing_balance
+}
+
+enum ProductStatus {
+  active
+  inactive
+}
+
+enum ApplicationStatus {
+  pending
+  under_review
+  approved
+  rejected
+  cancelled
+}
+
+enum LoanStatus {
+  active
+  paid_off
+  defaulted
+  written_off
+}
+
+enum DisbursementMethod {
+  mobile_money
+  bank_transfer
+  cash
+  susu_offset
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  partial
+  overdue
+}
+
+enum PaymentMethod {
+  cash
+  mobile_money
+  bank_transfer
+  susu_deduction
+}
+
+enum ManualTransactionType {
+  deposit
+  withdrawal
+  savings_withdrawal
+  emergency_withdrawal
+}
+
+enum SettingType {
+  string
+  number
+  boolean
+  json
+}
+
+enum HolidayType {
+  national
+  regional
+  custom
+}
+
+enum NotificationType {
+  payment_due
+  payment_overdue
+  payment_recorded
+  loan_approved
+  loan_rejected
+  cycle_completed
+  system_alert
+}
+
+enum RelatedType {
+  susu_cycle
+  loan
+  payment
+  application
+}
+
+enum SentVia {
+  system
+  sms
+  email
+}
+
+enum SavingsTransactionType {
+  deposit
+  withdrawal
+  cycle_payment
+  loan_payment
+  auto_deduction
+}
+
+enum SavingsSource {
+  overpayment
+  manual_deposit
+  cycle_completion
+  loan_settlement
+  withdrawal_request
+}
+
+enum SavingsPurpose {
+  savings_deposit
+  cycle_payment
+  loan_payment
+  withdrawal
+  auto_loan_deduction
+}
+
+enum ReferenceType {
+  daily_collection
+  manual_transaction
+  loan_payment
+  susu_cycle
+}
+
+enum DeductionNotificationStatus {
+  pending
+  approved
+  auto_deducted
+  cancelled
+}
+
+enum EmergencyWithdrawalStatus {
+  pending
+  approved
+  rejected
+  completed
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  username        String    @unique @db.VarChar(50)
+  email           String    @unique @db.VarChar(100)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  role            UserRole
+  firstName       String    @map("first_name") @db.VarChar(50)
+  lastName        String    @map("last_name") @db.VarChar(50)
+  middleName      String?   @map("middle_name") @db.VarChar(50)
+  phone           String    @db.VarChar(20)
+  address         String?   @db.Text
+  postalAddress   String?   @map("postal_address") @db.Text
+  city            String?   @db.VarChar(100)
+  region          String?   @db.VarChar(50)
+  postalCode      String?   @map("postal_code") @db.VarChar(20)
+  dateOfBirth     DateTime? @map("date_of_birth") @db.Date
+  gender          String?   @db.VarChar(20)
+  maritalStatus   String?   @map("marital_status") @db.VarChar(20)
+  nationality     String?   @db.VarChar(50)
+  idNumber        String?   @map("id_number") @db.VarChar(50)
+  profileImage    String?   @map("profile_image") @db.VarChar(255)
+  status          UserStatus @default(active)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  agents              Agent?
+  clients             Client?
+  loanApplicationsReviewed LoanApplication[] @relation("Reviewer")
+  loansDisbursed      Loan[] @relation("DisbursedBy")
+  systemSettings      SystemSetting[]
+  notifications       Notification[]
+  emergencyRequests   EmergencyWithdrawalRequest[] @relation("RequestedBy")
+  emergencyApprovals  EmergencyWithdrawalRequest[] @relation("ApprovedBy")
+  savingsProcessed    SavingsTransaction[]
+  holidaysCreated    HolidaysCalendar[]
+  manualTransactionsProcessed ManualTransaction[]
+  userActivity UserActivity[]
+  userDocuments UserDocument[]
+}
+
+model UserActivity {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  activityType String  @map("activity_type") @db.VarChar(50)
+  activityDescription String @map("activity_description") @db.Text
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.Text
+  referenceId Int?     @map("reference_id")
+  referenceType String? @map("reference_type") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([activityType, createdAt])
+  @@index([createdAt])
+  @@map("user_activity")
+}
+
+model Agent {
+  id             Int         @id @default(autoincrement())
+  userId         Int         @unique @map("user_id")
+  agentCode      String      @unique @map("agent_code") @db.VarChar(20)
+  hireDate       DateTime   @map("hire_date") @db.Date
+  commissionRate Decimal    @default(5) @map("commission_rate") @db.Decimal(5, 2)
+  territory      String?    @db.VarChar(100)
+  supervisorId   Int?       @map("supervisor_id")
+  status         AgentStatus @default(active)
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  user      User   @relation(fields: [userId], references: [id])
+  supervisor Agent?  @relation("Supervisor", fields: [supervisorId], references: [id])
+  subordinates Agent[] @relation("Supervisor")
+  clients   Client[]
+  collections DailyCollection[]
+  loanPaymentsCollected LoanPayment[]
+}
+
+model Client {
+  id                     Int            @id @default(autoincrement())
+  userId                 Int            @unique @map("user_id")
+  agentId                Int            @map("agent_id")
+  clientCode             String         @unique @map("client_code") @db.VarChar(20)
+  dailyDepositAmount     Decimal        @map("daily_deposit_amount") @db.Decimal(10, 2)
+  depositType            DepositType    @default(fixed_amount) @map("deposit_type")
+  preferredCollectionTime String?       @map("preferred_collection_time") @db.VarChar(10)
+  collectionLocation     String?        @map("collection_location") @db.Text
+  emergencyContactName   String?        @map("emergency_contact_name") @db.VarChar(100)
+  emergencyContactPhone  String?        @map("emergency_contact_phone") @db.VarChar(20)
+  nextOfKinName          String?        @map("next_of_kin_name") @db.VarChar(100)
+  nextOfKinRelationship  String?       @map("next_of_kin_relationship") @db.VarChar(50)
+  nextOfKinPhone         String?        @map("next_of_kin_phone") @db.VarChar(20)
+  nextOfKinEmail         String?        @map("next_of_kin_email") @db.VarChar(100)
+  nextOfKinAddress       String?        @map("next_of_kin_address") @db.Text
+  creditScore            Int            @default(0) @map("credit_score")
+  riskClassification     RiskClassification @default(medium) @map("risk_classification")
+  registrationDate       DateTime       @map("registration_date") @db.Date
+  status                 ClientStatus   @default(active)
+  createdAt              DateTime       @default(now()) @map("created_at")
+
+  user     User   @relation(fields: [userId], references: [id])
+  agent    Agent  @relation(fields: [agentId], references: [id])
+  susuCycles SusuCycle[]
+  loanApplications LoanApplication[]
+  loans    Loan[]
+  savingsAccount SavingsAccount?
+  emergencyWithdrawalRequests EmergencyWithdrawalRequest[]
+  loanDeductionNotifications LoanDeductionNotification[]
+  manualTransactions ManualTransaction[]
+}
+
+model SusuCycle {
+  id                Int         @id @default(autoincrement())
+  clientId          Int         @map("client_id")
+  cycleNumber       Int         @map("cycle_number")
+  startDate         DateTime    @map("start_date") @db.Date
+  endDate           DateTime    @map("end_date") @db.Date
+  dailyAmount       Decimal     @map("daily_amount") @db.Decimal(10, 2)
+  totalAmount       Decimal     @map("total_amount") @db.Decimal(10, 2)
+  payoutAmount      Decimal     @map("payout_amount") @db.Decimal(10, 2)
+  agentFee          Decimal     @map("agent_fee") @db.Decimal(10, 2)
+  status            CycleStatus @default(active)
+  isFlexible        Boolean     @default(false) @map("is_flexible")
+  averageDailyAmount Decimal?   @map("average_daily_amount") @db.Decimal(10, 2)
+  payoutTransferred  Boolean     @default(false) @map("payout_transferred")
+  payoutTransferredAt DateTime? @map("payout_transferred_at")
+  payoutDate        DateTime?   @map("payout_date") @db.Date
+  completionDate    DateTime?   @map("completion_date") @db.Date
+  createdAt         DateTime    @default(now()) @map("created_at")
+
+  client     Client @relation(fields: [clientId], references: [id])
+  dailyCollections DailyCollection[]
+  emergencyWithdrawalRequests EmergencyWithdrawalRequest[]
+
+  @@unique([clientId, cycleNumber])
+  @@index([clientId, status])
+  @@index([isFlexible])
+}
+
+model DailyCollection {
+  id               Int              @id @default(autoincrement())
+  susuCycleId      Int              @map("susu_cycle_id")
+  collectionDate   DateTime         @map("collection_date") @db.Date
+  dayNumber        Int              @map("day_number")
+  expectedAmount   Decimal          @map("expected_amount") @db.Decimal(10, 2)
+  collectedAmount  Decimal          @default(0) @map("collected_amount") @db.Decimal(10, 2)
+  collectionStatus CollectionStatus @default(pending) @map("collection_status")
+  collectionTime   DateTime?        @map("collection_time")
+  collectedById    Int?             @map("collected_by")
+  notes            String?          @db.Text
+  receiptNumber    String?          @map("receipt_number") @db.VarChar(50)
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  susuCycle  SusuCycle @relation(fields: [susuCycleId], references: [id])
+  collectedBy Agent?   @relation(fields: [collectedById], references: [id])
+
+  @@unique([susuCycleId, dayNumber])
+  @@index([susuCycleId, collectionStatus])
+}
+
+model LoanProduct {
+  id                Int           @id @default(autoincrement())
+  productName       String        @map("product_name") @db.VarChar(100)
+  productCode       String        @unique @map("product_code") @db.VarChar(20)
+  description       String?       @db.Text
+  minAmount         Decimal       @map("min_amount") @db.Decimal(10, 2)
+  maxAmount         Decimal       @map("max_amount") @db.Decimal(10, 2)
+  interestRate      Decimal       @map("interest_rate") @db.Decimal(5, 2)
+  interestType      InterestType  @default(flat) @map("interest_type")
+  minTermMonths     Int           @default(1) @map("min_term_months")
+  maxTermMonths     Int           @default(12) @map("max_term_months")
+  processingFeeRate Decimal       @default(0) @map("processing_fee_rate") @db.Decimal(5, 2)
+  eligibilityCriteria Json?      @map("eligibility_criteria")
+  status            ProductStatus @default(active)
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  loanApplications LoanApplication[]
+  loans            Loan[]
+}
+
+model LoanApplication {
+  id                  Int               @id @default(autoincrement())
+  applicationNumber   String            @unique @map("application_number") @db.VarChar(50)
+  clientId            Int               @map("client_id")
+  loanProductId        Int               @map("loan_product_id")
+  requestedAmount     Decimal           @map("requested_amount") @db.Decimal(10, 2)
+  requestedTermMonths  Int               @map("requested_term_months")
+  purpose             String            @db.Text
+  guarantorName       String?           @map("guarantor_name") @db.VarChar(100)
+  guarantorPhone      String?           @map("guarantor_phone") @db.VarChar(20)
+  guarantorIdNumber   String?           @map("guarantor_id_number") @db.VarChar(50)
+  agentRecommendation String?           @map("agent_recommendation") @db.Text
+  agentScore          Int?              @map("agent_score")
+  autoEligibilityScore Int?             @map("auto_eligibility_score")
+  applicationStatus   ApplicationStatus @default(pending) @map("application_status")
+  appliedDate         DateTime          @map("applied_date") @db.Date
+  reviewedById        Int?              @map("reviewed_by")
+  reviewDate          DateTime?          @map("review_date") @db.Date
+  reviewNotes         String?           @map("review_notes") @db.Text
+  approvedAmount      Decimal?           @map("approved_amount") @db.Decimal(10, 2)
+  approvedTermMonths  Int?              @map("approved_term_months")
+  approvalDate        DateTime?         @map("approval_date") @db.Date
+  createdAt           DateTime          @default(now()) @map("created_at")
+
+  client   Client      @relation(fields: [clientId], references: [id])
+  product  LoanProduct @relation(fields: [loanProductId], references: [id])
+  reviewer User?       @relation("Reviewer", fields: [reviewedById], references: [id])
+  loan     Loan?
+}
+
+model Loan {
+  id                  Int                @id @default(autoincrement())
+  loanNumber          String             @unique @map("loan_number") @db.VarChar(50)
+  applicationId       Int                @unique @map("application_id")
+  clientId            Int                @map("client_id")
+  loanProductId       Int                @map("loan_product_id")
+  principalAmount     Decimal            @map("principal_amount") @db.Decimal(10, 2)
+  interestRate        Decimal            @map("interest_rate") @db.Decimal(5, 2)
+  termMonths          Int                @map("term_months")
+  monthlyPayment      Decimal            @map("monthly_payment") @db.Decimal(10, 2)
+  totalRepaymentAmount Decimal           @map("total_repayment_amount") @db.Decimal(10, 2)
+  disbursementDate    DateTime           @map("disbursement_date") @db.Date
+  maturityDate        DateTime           @map("maturity_date") @db.Date
+  currentBalance      Decimal            @map("current_balance") @db.Decimal(10, 2)
+  totalPaid           Decimal            @default(0) @map("total_paid") @db.Decimal(10, 2)
+  paymentsMade        Int                @default(0) @map("payments_made")
+  lastPaymentDate     DateTime?          @map("last_payment_date") @db.Date
+  nextPaymentDate     DateTime?          @map("next_payment_date") @db.Date
+  loanStatus          LoanStatus         @default(active) @map("loan_status")
+  disbursedById       Int                @map("disbursed_by")
+  disbursementMethod  DisbursementMethod @map("disbursement_method")
+  createdAt           DateTime           @default(now()) @map("created_at")
+
+  application LoanApplication @relation(fields: [applicationId], references: [id])
+  client      Client         @relation(fields: [clientId], references: [id])
+  product     LoanProduct     @relation(fields: [loanProductId], references: [id])
+  disbursedBy User            @relation("DisbursedBy", fields: [disbursedById], references: [id])
+  payments    LoanPayment[]
+  loanDeductionNotifications LoanDeductionNotification[]
+}
+
+model LoanPayment {
+  id             Int            @id @default(autoincrement())
+  loanId         Int            @map("loan_id")
+  paymentNumber  Int            @map("payment_number")
+  dueDate        DateTime      @map("due_date") @db.Date
+  principalAmount Decimal      @map("principal_amount") @db.Decimal(10, 2)
+  interestAmount  Decimal      @map("interest_amount") @db.Decimal(10, 2)
+  totalDue       Decimal       @map("total_due") @db.Decimal(10, 2)
+  amountPaid     Decimal       @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  paymentDate    DateTime?     @map("payment_date") @db.Date
+  paymentStatus  PaymentStatus @default(pending) @map("payment_status")
+  daysOverdue    Int           @default(0) @map("days_overdue")
+  penaltyAmount  Decimal       @default(0) @map("penalty_amount") @db.Decimal(10, 2)
+  collectedById  Int?          @map("collected_by")
+  paymentMethod  PaymentMethod? @map("payment_method")
+  receiptNumber  String?       @map("receipt_number") @db.VarChar(50)
+  notes          String?       @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  loan        Loan   @relation(fields: [loanId], references: [id])
+  collectedBy Agent? @relation(fields: [collectedById], references: [id])
+
+  @@index([loanId, paymentStatus])
+}
+
+model ManualTransaction {
+  id              Int                    @id @default(autoincrement())
+  clientId        Int                    @map("client_id")
+  transactionType ManualTransactionType  @map("transaction_type")
+  amount          Decimal                @db.Decimal(10, 2)
+  description     String                 @db.Text
+  reference       String                 @unique @db.VarChar(50)
+  processedById   Int                    @map("processed_by")
+  createdAt       DateTime               @default(now()) @map("created_at")
+
+  client      Client @relation(fields: [clientId], references: [id])
+  processedBy User   @relation(fields: [processedById], references: [id])
+
+  @@index([clientId])
+  @@index([createdAt])
+}
+
+model SystemSetting {
+  id           Int         @id @default(autoincrement())
+  settingKey   String      @unique @map("setting_key") @db.VarChar(100)
+  settingValue String      @map("setting_value") @db.Text
+  settingType  SettingType @default(string) @map("setting_type")
+  category     String?     @db.VarChar(50)
+  description  String?    @db.Text
+  updatedById  Int?        @map("updated_by")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  updatedBy User? @relation(fields: [updatedById], references: [id])
+}
+
+model HolidaysCalendar {
+  id          Int        @id @default(autoincrement())
+  holidayDate DateTime  @unique @map("holiday_date") @db.Date
+  holidayName String    @map("holiday_name") @db.VarChar(100)
+  holidayType HolidayType @default(national) @map("holiday_type")
+  isRecurring Boolean   @default(false) @map("is_recurring")
+  createdById Int       @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+}
+
+model Notification {
+  id              Int            @id @default(autoincrement())
+  userId          Int            @map("user_id")
+  notificationType NotificationType @map("notification_type")
+  title           String         @db.VarChar(255)
+  message         String         @db.Text
+  relatedId       Int?           @map("related_id")
+  relatedType     RelatedType?   @map("related_type")
+  isRead          Boolean        @default(false) @map("is_read")
+  sentVia         SentVia        @default(system) @map("sent_via")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  readAt          DateTime?     @map("read_at")
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model UserDocument {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  documentType String  @map("document_type") @db.VarChar(50)
+  filePath    String   @map("file_path") @db.VarChar(500)
+  fileName    String   @map("file_name") @db.VarChar(255)
+  fileSize    Int      @map("file_size")
+  fileType    String   @map("file_type") @db.VarChar(100)
+  description String? @db.Text
+  status      String   @default("pending") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_documents")
+}
+
+model SavingsAccount {
+  id        Int      @id @default(autoincrement())
+  clientId  Int      @unique @map("client_id")
+  balance   Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  client       Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  transactions SavingsTransaction[]
+}
+
+model SavingsTransaction {
+  id                    Int                   @id @default(autoincrement())
+  savingsAccountId      Int                   @map("savings_account_id")
+  transactionType       SavingsTransactionType @map("transaction_type")
+  amount                Decimal               @db.Decimal(10, 2)
+  balanceAfter          Decimal               @map("balance_after") @db.Decimal(10, 2)
+  source                SavingsSource
+  purpose               SavingsPurpose
+  referenceTransactionId Int?                  @map("reference_transaction_id")
+  referenceType         ReferenceType?        @map("reference_type")
+  description           String?               @db.Text
+  processedById         Int?                  @map("processed_by")
+  createdAt             DateTime              @default(now()) @map("created_at")
+
+  savingsAccount SavingsAccount @relation(fields: [savingsAccountId], references: [id], onDelete: Cascade)
+  processedBy    User?          @relation(fields: [processedById], references: [id], onDelete: SetNull)
+
+  @@index([savingsAccountId])
+  @@index([transactionType])
+  @@index([createdAt])
+}
+
+model LoanDeductionNotification {
+  id                Int                      @id @default(autoincrement())
+  clientId          Int                      @map("client_id")
+  loanId            Int                      @map("loan_id")
+  amount            Decimal                  @db.Decimal(10, 2)
+  notificationSentAt DateTime                @default(now()) @map("notification_sent_at")
+  autoDeductionAt   DateTime?                @map("auto_deduction_at")
+  status            DeductionNotificationStatus @default(pending)
+  createdAt         DateTime                 @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  loan   Loan   @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([status])
+  @@index([autoDeductionAt])
+}
+
+model EmergencyWithdrawalRequest {
+  id              Int                      @id @default(autoincrement())
+  clientId        Int                      @map("client_id")
+  susuCycleId     Int                      @map("susu_cycle_id")
+  requestedAmount Decimal                  @map("requested_amount") @db.Decimal(10, 2)
+  availableAmount Decimal                  @map("available_amount") @db.Decimal(10, 2)
+  daysCollected   Int                      @map("days_collected")
+  commissionAmount Decimal                @map("commission_amount") @db.Decimal(10, 2)
+  status          EmergencyWithdrawalStatus @default(pending)
+  requestedById   Int                      @map("requested_by")
+  approvedById    Int?                     @map("approved_by")
+  rejectionReason String?                 @map("rejection_reason") @db.Text
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  approvedAt      DateTime?                @map("approved_at")
+  completedAt     DateTime?                @map("completed_at")
+
+  client   Client   @relation(fields: [clientId], references: [id])
+  susuCycle SusuCycle @relation(fields: [susuCycleId], references: [id])
+  requestedBy User   @relation("RequestedBy", fields: [requestedById], references: [id])
+  approvedBy  User?  @relation("ApprovedBy", fields: [approvedById], references: [id])
+  transactions EmergencyWithdrawalTransaction[]
+}
+
+model EmergencyWithdrawalTransaction {
+  id               Int     @id @default(autoincrement())
+  requestId        Int     @map("request_id")
+  clientId         Int     @map("client_id")
+  amount           Decimal @db.Decimal(10, 2)
+  commissionDeducted Decimal @map("commission_deducted") @db.Decimal(10, 2)
+  netAmount        Decimal @map("net_amount") @db.Decimal(10, 2)
+  transactionType  String  @default("emergency_withdrawal") @map("transaction_type") @db.VarChar(50)
+  reference        String  @db.VarChar(100)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  request EmergencyWithdrawalRequest @relation(fields: [requestId], references: [id])
+}
