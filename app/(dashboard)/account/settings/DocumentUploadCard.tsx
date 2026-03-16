@@ -140,7 +140,9 @@ export function DocumentUploadCard({ documents }: { documents: Doc[] }) {
                       </a>
                       {d.status === "pending" && (
                         <form
-                          action={deleteDocument}
+                          action={async (formData: FormData) => {
+                            await deleteDocument(formData);
+                          }}
                           className="inline"
                           onSubmit={(e) => {
                             if (!confirm("Delete this document?")) e.preventDefault();
