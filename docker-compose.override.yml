@@ -1,0 +1,8 @@
+# Local dev: expose app on host port 3000.
+# Merged automatically when you run: docker compose up -d
+# Coolify uses only docker-compose.yml (-f path), so this override is not applied there.
+
+services:
+  app:
+    ports:
+      - "3000:3000"

@@ -25,12 +25,12 @@ See the migration plan in the repo (`.cursor/plans/`) for architecture and rollo
 
 Use this workflow to run everything on your machine for testing; when satisfied, deploy to your online host.
 
-1. **Start PostgreSQL and Redis (Docker)**  
+1. **Start PostgreSQL, Redis, and app (Docker)**  
    From this folder (`next-app`):
    ```bash
    docker compose up -d
    ```
-   Postgres is on `localhost:5433` (port 5433 to avoid conflict with local PostgreSQL on 5432), Redis on `localhost:6379`. Credentials match `.env.example` below.
+   The app is at **http://localhost:3000** (port added by `docker-compose.override.yml`). Postgres is on `localhost:5433`, Redis on `localhost:6379`. On Coolify the main compose has no app port so the proxy can use your domain instead.
 
 2. **Environment**  
    Copy `.env.example` to `.env` and set:

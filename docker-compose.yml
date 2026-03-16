@@ -1,6 +1,6 @@
 # Full stack: Next.js app + PostgreSQL + Redis.
-# Run with: docker compose up -d
-# App: http://localhost:3000
+# On Coolify: no app port here so host 3000 is free; Coolify proxy routes via domain.
+# Locally: docker-compose.override.yml adds ports so you get http://localhost:3000.
 # Postgres (host): port 5433 to avoid conflict with local PostgreSQL on 5432.
 
 services:
@@ -37,8 +37,6 @@ services:
       dockerfile: Dockerfile
     container_name: susu-app
     restart: unless-stopped
-    ports:
-      - "3000:3000"
     environment:
       DATABASE_URL: postgresql://susu:susu_local@postgres:5432/susu_system
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
