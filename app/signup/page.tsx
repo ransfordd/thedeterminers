@@ -2,6 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { SignupForm } from "./SignupForm";
 
+/** Prevent static prerender at build time (requires DATABASE_URL at request time). */
+export const dynamic = "force-dynamic";
+
 export default async function SignupPage() {
   const agents = await prisma.agent.findMany({
     where: { status: "active" },
