@@ -15,7 +15,7 @@ export interface DataTableProps<T> {
   className?: string;
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T extends object>({
   columns,
   data,
   caption,
@@ -78,8 +78,8 @@ export function DataTable<T extends Record<string, unknown>>({
                     className={`px-4 py-2 text-gray-900 dark:text-gray-100 ${col.className ?? ""}`}
                   >
                     {col.render
-                      ? col.render(row as T)
-                      : String(row[col.key] ?? "")}
+                      ? col.render(row)
+                      : String((row as Record<string, unknown>)[col.key] ?? "")}
                   </td>
                 ))}
               </tr>
