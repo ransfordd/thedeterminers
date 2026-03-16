@@ -1,3 +1,4 @@
+import { ManualTransactionType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
 
@@ -56,21 +57,14 @@ export async function getFinancialReportData(
   const includeWithdrawals = reportType === "all" || reportType === "withdrawals";
   const includeAgentPerf = reportType === "agent_performance";
 
-  const collectionWhere: {
-    collectionDate: { gte: Date; lte: Date };
-    collectionStatus: string;
-    collectedById?: number;
-  } = {
+  const collectionWhere = {
     collectionDate: { gte: fromDate, lte: toDate },
-    collectionStatus: "collected",
+    collectionStatus: "collected" as const,
+    ...(agentId != null ? { collectedById: agentId } : {}),
   };
-  if (agentId != null) {
-    collectionWhere.collectedById = agentId;
-  }
-
   const manualWhere = {
     createdAt: { gte: fromDate, lte: toDate },
-    transactionType: { in: ["withdrawal", "savings_withdrawal", "emergency_withdrawal"] as const },
+    transactionType: { in: [ManualTransactionType.withdrawal, ManualTransactionType.savings_withdrawal, ManualTransactionType.emergency_withdrawal] },
     ...(agentId != null ? { client: { agentId } } : {}),
   };
 
@@ -147,7 +141,8 @@ export async function getFinancialReportData(
               amount: toNum(sc.payoutAmount),
               cycleNumber: sc.cycleNumber,
             }));
-            const manualRows: WithdrawalTransactionRow[] = manualList.map((m) => ({
+            type ManualWithClient = (typeof manualList)[number] & { client: { user: { firstName: string; lastName: string } } };
+            const manualRows: WithdrawalTransactionRow[] = (manualList as ManualWithClient[]).map((m) => ({
               type: "Manual Withdrawal",
               clientName: `${m.client.user.firstName} ${m.client.user.lastName}`,
               receiptNumber: m.reference,
@@ -245,7 +240,11 @@ export async function getFinancialReportData(
     withdrawalsByDate.sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  const depositTxRows: DepositTransactionRow[] = depositTransactions.map((dc) => ({
+  type DepositWithRelations = (typeof depositTransactions)[number] & {
+    susuCycle: { client: { user: { firstName: string; lastName: string } } };
+    collectedBy: { agentCode: string } | null;
+  };
+  const depositTxRows: DepositTransactionRow[] = (depositTransactions as DepositWithRelations[]).map((dc) => ({
     type: "Deposit",
     clientName: `${dc.susuCycle.client.user.firstName} ${dc.susuCycle.client.user.lastName}`,
     receiptNumber: dc.receiptNumber ?? "N/A",

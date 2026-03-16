@@ -30,10 +30,10 @@ export default async function DashboardLayout({
       select: { settingKey: true, settingValue: true },
     }),
   ]);
-  const profileImage = currentUser?.profileImage ?? session.user.image ?? null;
-  const displayName = currentUser
+  const profileImage = (currentUser?.profileImage ?? session.user.image ?? null) ?? null;
+  const displayName = (currentUser
     ? `${currentUser.firstName ?? ""} ${currentUser.lastName ?? ""}`.trim() || session.user.name
-    : session.user.name ?? null;
+    : session.user.name) ?? null;
   const appName = systemBranding.find((s) => s.settingKey === "app_name")?.settingValue ?? "The Determiners Susu System";
   const appLogoPath = systemBranding.find((s) => s.settingKey === "app_logo")?.settingValue ?? null;
 

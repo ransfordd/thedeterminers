@@ -23,7 +23,7 @@ export default async function TransferPayoutPage() {
         subtitle="Transfer your completed cycle payouts to your savings account"
         icon={<i className="fas fa-exchange-alt" />}
         backHref="/client/savings"
-        variant="info"
+        variant="blue"
       />
       <ModernCard
         title="Pending Payouts"

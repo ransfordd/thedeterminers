@@ -190,7 +190,7 @@ export async function updateClient(
         firstName,
         lastName,
         email,
-        phone,
+        phone: phone ?? undefined,
         ...(passwordHash && { passwordHash }),
       },
     }),
@@ -200,7 +200,7 @@ export async function updateClient(
         agentId,
         dailyDepositAmount,
         depositType,
-        preferredCollectionTime,
+        preferredCollectionTime: preferredCollectionTime ?? undefined,
       },
     }),
   ]);

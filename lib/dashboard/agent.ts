@@ -157,16 +157,19 @@ export async function getAgentRecentCollections(
     createdAt: r.collectionTime ?? r.createdAt,
   }));
 
-  const loanItems: RecentCollectionItem[] = loanRows.map((r) => ({
-    id: r.id,
-    type: "loan",
-    clientCode: r.loan.client.clientCode,
-    clientName: `${r.loan.client.user.firstName} ${r.loan.client.user.lastName}`,
-    amount: toNum(r.amountPaid),
-    date: r.paymentDate.toISOString().slice(0, 10),
-    receiptNumber: r.receiptNumber,
-    createdAt: r.paymentDate,
-  }));
+  const loanItems: RecentCollectionItem[] = loanRows.map((r) => {
+    const paymentDate = r.paymentDate ?? r.loan.disbursementDate;
+    return {
+      id: r.id,
+      type: "loan" as const,
+      clientCode: r.loan.client.clientCode,
+      clientName: `${r.loan.client.user.firstName} ${r.loan.client.user.lastName}`,
+      amount: toNum(r.amountPaid),
+      date: paymentDate.toISOString().slice(0, 10),
+      receiptNumber: r.receiptNumber,
+      createdAt: paymentDate,
+    };
+  });
 
   const combined = [...susuItems, ...loanItems].sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()

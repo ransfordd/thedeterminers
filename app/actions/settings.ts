@@ -247,8 +247,8 @@ export async function sendNotification(
   if (!title || !message) return { error: "Title and message are required" };
   if (!isValidTargetRole(targetRole)) return { error: "Invalid target" };
 
-  const where: { status?: "active"; role?: string } = { status: "active" };
-  if (targetRole !== "all") where.role = targetRole;
+  const where: { status?: "active"; role?: import("@prisma/client").UserRole } = { status: "active" };
+  if (targetRole !== "all") where.role = targetRole as import("@prisma/client").UserRole;
 
   const users = await prisma.user.findMany({
     where,

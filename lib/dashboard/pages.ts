@@ -287,7 +287,7 @@ export async function getTransactionsListFiltered(
           take: limit,
           include: {
             client: { include: { user: true } },
-            processedBy: { include: { user: true } },
+            processedBy: true,
           },
         })
       : [],
@@ -357,7 +357,7 @@ export async function getTransactionsListFiltered(
           date: r.createdAt as Date,
           amount: toNum(r.amount),
           clientName: `${r.client.user.firstName} ${r.client.user.lastName}`,
-          agentName: r.processedBy ? `${r.processedBy.user.firstName} ${r.processedBy.user.lastName}` : "System Admin",
+          agentName: r.processedBy ? `${r.processedBy.firstName} ${r.processedBy.lastName}` : "System Admin",
           id: r.id,
           source: "manual" as const,
         }))

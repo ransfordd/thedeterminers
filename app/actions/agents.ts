@@ -170,7 +170,7 @@ export async function updateAgent(
         firstName,
         lastName,
         email,
-        phone,
+        phone: phone ?? undefined,
         ...(passwordHash && { passwordHash }),
       },
     }),

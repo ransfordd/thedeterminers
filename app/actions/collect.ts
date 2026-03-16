@@ -54,8 +54,10 @@ export async function recordCollection(
         orderBy: { id: "desc" },
       });
       if (!cycle) {
-        cycle = await ensureSusuCycleForMonth(clientId, collectionDate);
-        if (!cycle) return { error: "Client not found or inactive; cannot create Susu cycle" };
+        const ensured = await ensureSusuCycleForMonth(clientId, collectionDate);
+        if (!ensured) return { error: "Client not found or inactive; cannot create Susu cycle" };
+        cycle = await prisma.susuCycle.findUnique({ where: { id: ensured.id } });
+        if (!cycle) return { error: "Cycle not found" };
       }
 
       const existing = await prisma.dailyCollection.findMany({

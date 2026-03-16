@@ -218,7 +218,7 @@ export async function getRecentTransactions(limit = 20): Promise<RecentTransacti
   const loanMapped: RecentTransaction[] = loanRows.map((r) => ({
     type: "loan" as const,
     ref: r.receiptNumber ?? "",
-    date: r.paymentDate,
+    date: r.paymentDate ?? r.loan.disbursementDate,
     amount: toNum(r.amountPaid),
     clientName: `${r.loan.client.user.firstName} ${r.loan.client.user.lastName}`,
   }));

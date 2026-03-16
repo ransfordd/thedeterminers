@@ -24,7 +24,7 @@ export default async function RequestWithdrawalPage() {
         subtitle="Submit a request to withdraw funds from your savings account"
         icon={<i className="fas fa-money-bill-wave" />}
         backHref="/client/savings"
-        variant="info"
+        variant="blue"
       />
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 max-w-md">
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">

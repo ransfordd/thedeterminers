@@ -18,7 +18,6 @@ export async function resolveRole(session: Session | null): Promise<string> {
 }
 
 export const authOptions: NextAuthOptions = {
-  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: (parseInt(process.env.SESSION_TIMEOUT_MINUTES ?? "30", 10) || 30) * 60,

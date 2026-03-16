@@ -258,7 +258,7 @@ export async function payLoanFromSavings(
   if (updatedLoan && Number(updatedLoan.currentBalance) <= 0) {
     await prisma.loan.update({
       where: { id: loan.id },
-      data: { loanStatus: "completed" },
+      data: { loanStatus: "paid_off" as const },
     });
   }
 

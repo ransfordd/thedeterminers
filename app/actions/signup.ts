@@ -2,7 +2,7 @@
 
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/db";
-import { redirect, isRedirectError } from "next/navigation";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Decimal } from "@prisma/client/runtime/library";
 
@@ -105,7 +105,7 @@ export async function signupClient(prev: SignupState, formData: FormData): Promi
     revalidatePath("/login");
     redirect("/login?success=1");
   } catch (e) {
-    if (isRedirectError(e)) throw e;
+    if (e && typeof e === "object" && (e as { digest?: string }).digest === "NEXT_REDIRECT") throw e;
     console.error("Signup error:", e);
     return { error: "Registration failed. Please try again." };
   }

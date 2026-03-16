@@ -36,7 +36,7 @@ export default async function PayLoanFromSavingsPage({
         subtitle="Use your savings balance to pay your active loan"
         icon={<i className="fas fa-file-invoice-dollar" />}
         backHref="/client/savings"
-        variant="warning"
+        variant="orange"
       />
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 max-w-md">
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
