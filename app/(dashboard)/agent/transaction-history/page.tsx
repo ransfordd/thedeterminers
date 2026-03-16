@@ -112,7 +112,7 @@ export default async function AgentTransactionHistoryPage({
   };
 
   const loanPaymentWhere = {
-    paymentStatus: { in: ["paid", "partial"] as const },
+    paymentStatus: { in: ["paid", "partial"] },
     loan: { clientId: { in: clientIds } },
     ...(filters.dateFrom != null || filters.dateTo != null
       ? {
