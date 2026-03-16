@@ -90,7 +90,7 @@ export default async function ClientDashboardPage() {
             {emergencyWithdrawalEligible.eligible && emergencyWithdrawalEligible.cycleId && (
               <>
                 <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">
-                  Available for emergency withdrawal: {formatCurrency(emergencyWithdrawalEligible.availableEmergencyAmount)} (1 day commission of {formatCurrency(emergencyWithdrawalEligible.emergencyCommissionAmount)} deducted).
+                  Available for emergency withdrawal: {formatCurrency(emergencyWithdrawalEligible.availableEmergencyAmount)} (commission {formatCurrency(emergencyWithdrawalEligible.emergencyCommissionAmount)} deducted).
                 </p>
                 <a href={`/client/emergency-withdrawal?cycle_id=${emergencyWithdrawalEligible.cycleId}`} className="mt-3 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
                   <i className="fas fa-exclamation-triangle" /> Emergency Withdrawal

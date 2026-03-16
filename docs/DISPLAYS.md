@@ -22,7 +22,7 @@ Static assets (images) live under `public/assets/images/` with the same folder n
 | About Us            | `/about`               | Hero slider (About-side images), Our Story (text + image), Our Values (6 value cards), Meet Our Team (4 members with photos), Our Impact stats, Our Mission & Vision (2 cards), Our Journey (timeline), Awards & Recognition (4 items). |
 | Contact Us          | `/contact`             | Hero slider (4 contact-side images), Get In Touch: left – contact form (Full Name, Email, Phone, Subject select, Message); right – Contact Information (Head Office, Phone Numbers, Email Addresses, Office Hours). Submit via Server Action with Zod validation. |
 | News & Updates      | `/news`                | Hero slider (3 News-side images), Latest Articles: 3 full articles with images and anchors #financial-planning, #mobile-app, #bank-licensing. |
-| Login               | `/login`               | Credentials login; redirect to role dashboard on success. |
+| Login               | `/login`               | Credentials login with **email**, **username**, or **phone number** (same password); redirect to role dashboard on success. |
 | Logout              | (action)               | Session cleared; redirect to home or login. |
 
 Business display info (name, address, phone, email, office hours) is centralized in `lib/public-business.ts` and can be overridden via env vars (e.g. `NEXT_PUBLIC_BUSINESS_NAME`, `NEXT_PUBLIC_BUSINESS_ADDRESS`).
@@ -44,8 +44,8 @@ All dashboard pages use the shared layout: header (business name + “Susu Syste
 |---------------------|------------------------|-------------|
 | Loan products       | `/admin/products`      | List all loan products (name, code, rate, amount range, terms, status). |
 | Loan applications   | `/admin/applications`  | List applications with client, product, amount, status. |
-| Client management   | `/admin/clients`       | List all clients with agent, daily amount, status. **Add New Client** (`/admin/clients/new`): form (username, email, first/last name, phone, password, assigned agent, daily deposit amount, deposit type, preferred collection time). |
-| Agent management    | `/admin/agents`       | List agents with commission, clients, collections, cycles. **Add New Agent** (`/admin/agents/new`): form (first/last name, username, email, phone, commission rate %, password, confirm password). |
+| Client management   | `/admin/clients`       | List all clients with agent, daily amount, status. **Login** (impersonate) button per row for admin: signs in as that client; **Back to Admin Dashboard** banner on client dashboard exits. **Add New Client** (`/admin/clients/new`): form (username, email, first/last name, phone, password, assigned agent, daily deposit amount, deposit type, preferred collection time). |
+| Agent management    | `/admin/agents`       | List agents with commission, clients, collections, cycles. **Login** (impersonate) button per row for admin: signs in as that agent; **Back to Admin Dashboard** banner on agent dashboard exits. **Add New Agent** (`/admin/agents/new`): form (first/last name, username, email, phone, commission rate %, password, confirm password). |
 | Transaction management | `/admin/transactions` | Filters: transaction type (all/Susu/loan), from date, to date. Table: Type, Date, Client, Amount, Agent, Actions (Print receipt). Export Report dropdown (CSV). |
 | Notifications      | `/admin/notifications` | List notifications; link to send. |
 | System settings    | `/admin/settings`     | Settings grouped by category (System Configuration, Security, Business, Susu, Loans, Notifications, Maintenance). Each section has labelled inputs (text, number, boolean, select) and Save per row. |

@@ -272,7 +272,7 @@ model Agent {
 model Client {
   id                     Int            @id @default(autoincrement())
   userId                 Int            @unique @map("user_id")
-  agentId                Int            @map("agent_id")
+  agentId                Int?           @map("agent_id")
   clientCode             String         @unique @map("client_code") @db.VarChar(20)
   dailyDepositAmount     Decimal        @map("daily_deposit_amount") @db.Decimal(10, 2)
   depositType            DepositType    @default(fixed_amount) @map("deposit_type")
@@ -292,7 +292,7 @@ model Client {
   createdAt              DateTime       @default(now()) @map("created_at")
 
   user     User   @relation(fields: [userId], references: [id])
-  agent    Agent  @relation(fields: [agentId], references: [id])
+  agent    Agent? @relation(fields: [agentId], references: [id])
   susuCycles SusuCycle[]
   loanApplications LoanApplication[]
   loans    Loan[]

@@ -159,14 +159,28 @@ export async function payCycleFromSavings(
   }
 
   if (usedDays.size >= cycleLength) {
-    const totalAmount = Number(cycle.totalAmount);
-    const agentFee = Number(cycle.agentFee);
+    const agg = await prisma.dailyCollection.aggregate({
+      where: { susuCycleId: cycle.id, collectionStatus: "collected" },
+      _sum: { collectedAmount: true },
+      _count: { id: true },
+    });
+    const totalCollected = Number(agg._sum.collectedAmount ?? 0);
+    const daysCollected = agg._count.id;
+    const dailyAmountNum = Number(cycle.dailyAmount);
+    const { computeCommission } = await import("@/lib/commission");
+    const { commission, amountToClient } = computeCommission({
+      isFlexible: cycle.isFlexible ?? false,
+      dailyAmount: dailyAmountNum,
+      totalCollected,
+      daysCollected,
+    });
     await prisma.susuCycle.update({
       where: { id: cycle.id },
       data: {
         status: "completed",
         completionDate: paymentDate,
-        payoutAmount: new Decimal(Math.max(0, totalAmount - agentFee)),
+        agentFee: new Decimal(commission),
+        payoutAmount: new Decimal(amountToClient),
         payoutDate: paymentDate,
       },
     });

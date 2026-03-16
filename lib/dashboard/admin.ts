@@ -295,6 +295,7 @@ export async function getAgentPerformance(options?: {
         where: {
           susuCycle: { clientId: { in: clientIds } },
           collectionStatus: "collected",
+          collectedById: a.id,
           ...collectionDateFilter,
         },
         _sum: { collectedAmount: true },

@@ -111,10 +111,16 @@ export async function requestEmergencyWithdrawal(
   });
   if (!cycle) return { error: "Cycle not found or not active" };
 
-  const daysCollected = await prisma.dailyCollection.count({
-    where: { susuCycleId: cycleId, collectionStatus: "collected" },
-  });
-  if (daysCollected < 3) return { error: "Must have paid at least 3 days to request emergency withdrawal" };
+  const [daysCollected, totalCollectedAgg] = await Promise.all([
+    prisma.dailyCollection.count({
+      where: { susuCycleId: cycleId, collectionStatus: "collected" },
+    }),
+    prisma.dailyCollection.aggregate({
+      where: { susuCycleId: cycleId, collectionStatus: "collected" },
+      _sum: { collectedAmount: true },
+    }),
+  ]);
+  if (daysCollected < 2) return { error: "Must have paid at least 2 days to request emergency withdrawal" };
 
   const existing = await prisma.emergencyWithdrawalRequest.findFirst({
     where: { clientId: client.id, susuCycleId: cycleId, status: { not: "rejected" } },
@@ -122,8 +128,14 @@ export async function requestEmergencyWithdrawal(
   if (existing) return { error: "You already have a pending or approved request for this cycle" };
 
   const dailyAmount = Number(cycle.dailyAmount);
-  const commissionAmount = dailyAmount;
-  const availableAmount = Math.max(0, daysCollected * dailyAmount - commissionAmount);
+  const totalCollected = Number(totalCollectedAgg._sum.collectedAmount ?? 0);
+  const { computeCommission } = await import("@/lib/commission");
+  const { commission: commissionAmount, amountToClient: availableAmount } = computeCommission({
+    isFlexible: cycle.isFlexible ?? false,
+    dailyAmount,
+    totalCollected,
+    daysCollected,
+  });
   if (requestedAmount > availableAmount) return { error: `Requested amount cannot exceed available GHS ${availableAmount.toFixed(2)}` };
 
   await prisma.emergencyWithdrawalRequest.create({

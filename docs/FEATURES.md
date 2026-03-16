@@ -3,6 +3,7 @@
 ## Business Admin
 
 - Full system control: users, roles, settings.
+- **Impersonation:** From Client Management (`/admin/clients`) and Agent Management (`/admin/agents`), admins can click **Login** on a row to sign in as that client or agent. A “Back to Admin Dashboard” banner appears on the client/agent dashboard to exit impersonation and restore the admin session.
 - **Loan products:** Create/edit products (min/max amount, interest, term).
 - **Loan applications:** Review, approve/reject, set approved amount and term.
 - **Reports:** Financial report, agent commission report, analytics.
@@ -54,11 +55,20 @@
 
 ## Shared (all authenticated)
 
-- Login / logout.
+- **Login / logout:** Sign in with **email**, **username**, or **phone number** (same password). Phone numbers are normalized (e.g. Ghana 0xxx → 233xxx).
 - Account settings, change password.
-- Notifications (inbox, mark read).
+- Notifications (inbox, mark read). **SMS (optional):** If `ARKESEL_API_KEY` and `ARKESEL_SENDER_ID` are set in env, the app sends SMS for payment recorded, loan application, emergency withdrawal request, cycle complete, etc. Recipients are resolved from User phone; for clients, fallback to emergency/next-of-kin phone. See `lib/sms.ts`.
 
 *Routes:* `app/(auth)/login`, `/account/settings`, `/account/password`. **Account settings:** Profile picture (upload/remove), Account information (read-only: username, user code, role, created), Profile form (name, email, phone, address), Change password link, **Personal information** (middle name, DOB, gender, marital status, nationality), **Contact (extended)** (postal address, city, region, postal code), **Next of kin** (clients only), **Document upload** (list, upload, view, delete if pending). API: notifications mark-as-read, etc.
+
+---
+
+## Susu commission and month-end (business rules)
+
+- **Fixed accounts:** Company commission = one day’s amount (the client’s daily amount). Example: GHS 50/day, 31 days collected → GHS 1,550 total; commission GHS 50; client gets GHS 1,500.
+- **Flexible accounts:** Company commission = total collected ÷ number of days paid (one day’s average). Example: GHS 1,000 over 5 days → commission GHS 200; client gets GHS 800.
+- **Emergency withdrawal:** Allowed only if the client has paid **at least 2 days**. Commission is deducted using the same rules (fixed: one day’s amount; flexible: total ÷ days). Withdrawable = total collected − commission.
+- **Month-end:** When a new month begins, the system (via cron) closes all active cycles that ended in the previous month: marks them **cancelled** (incomplete), computes commission per rules above, credits (total collected − commission) to the client’s savings account, then creates a new cycle for the current month for each active client. Run automatically by calling `GET` or `POST` `/api/cron/month-end` with `Authorization: Bearer <CRON_SECRET>` or `?secret=<CRON_SECRET>`. See `lib/month-end.ts`, `lib/commission.ts`.
 
 ---
 

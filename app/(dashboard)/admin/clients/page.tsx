@@ -8,6 +8,7 @@ import { ClientActions } from "./ClientActions";
 
 type ClientRow = {
   id: number;
+  userId: number;
   username: string;
   firstName: string;
   lastName: string;

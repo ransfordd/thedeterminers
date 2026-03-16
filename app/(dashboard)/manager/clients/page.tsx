@@ -8,6 +8,7 @@ import { ClientActions } from "@/app/(dashboard)/admin/clients/ClientActions";
 
 type ClientRow = {
   id: number;
+  userId: number;
   username: string;
   firstName: string;
   lastName: string;

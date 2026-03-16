@@ -162,15 +162,31 @@ export async function updateClient(
   const lastName = (formData.get("lastName") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
   const phone = (formData.get("phone") as string)?.trim() || null;
-  const agentIdRaw = formData.get("agentId") as string;
-  const agentId = agentIdRaw ? parseInt(agentIdRaw, 10) : NaN;
+  const address = (formData.get("address") as string)?.trim() || null;
+  const middleName = (formData.get("middleName") as string)?.trim() || null;
+  const dateOfBirthRaw = (formData.get("dateOfBirth") as string)?.trim() || null;
+  const dateOfBirth = dateOfBirthRaw ? new Date(dateOfBirthRaw) : null;
+  const gender = (formData.get("gender") as string)?.trim() || null;
+  const maritalStatus = (formData.get("maritalStatus") as string)?.trim() || null;
+  const nationality = (formData.get("nationality") as string)?.trim() || null;
+  const postalAddress = (formData.get("postalAddress") as string)?.trim() || null;
+  const city = (formData.get("city") as string)?.trim() || null;
+  const region = (formData.get("region") as string)?.trim() || null;
+  const postalCode = (formData.get("postalCode") as string)?.trim() || null;
+  const nextOfKinName = (formData.get("nextOfKinName") as string)?.trim() || null;
+  const nextOfKinRelationship = (formData.get("nextOfKinRelationship") as string)?.trim() || null;
+  const nextOfKinPhone = (formData.get("nextOfKinPhone") as string)?.trim() || null;
+  const nextOfKinEmail = (formData.get("nextOfKinEmail") as string)?.trim() || null;
+  const nextOfKinAddress = (formData.get("nextOfKinAddress") as string)?.trim() || null;
+  const agentIdRaw = (formData.get("agentId") as string)?.trim();
+  const agentIdParsed = agentIdRaw ? parseInt(agentIdRaw, 10) : NaN;
+  const agentId = (agentIdRaw && !isNaN(agentIdParsed)) ? agentIdParsed : null;
   const dailyDepositAmountRaw = formData.get("dailyDepositAmount") as string;
   const dailyDepositAmount = dailyDepositAmountRaw ? parseFloat(dailyDepositAmountRaw) : NaN;
   const depositType = (formData.get("depositType") as "fixed_amount" | "flexible_amount") || "fixed_amount";
   const preferredCollectionTime = (formData.get("preferredCollectionTime") as string)?.trim() || null;
 
   if (!firstName || !lastName || !email) return { error: "First name, last name, and email are required." };
-  if (!agentId || isNaN(agentId)) return { error: "Please select an agent." };
   if (isNaN(dailyDepositAmount) || dailyDepositAmount < 0) return { error: "Daily deposit amount must be a valid number." };
 
   const client = await prisma.client.findUnique({ where: { id: clientId }, include: { user: true } });
@@ -191,6 +207,16 @@ export async function updateClient(
         lastName,
         email,
         phone: phone ?? undefined,
+        address: address ?? undefined,
+        middleName: middleName ?? undefined,
+        dateOfBirth: dateOfBirth ?? undefined,
+        gender: gender ?? undefined,
+        maritalStatus: maritalStatus ?? undefined,
+        nationality: nationality ?? undefined,
+        postalAddress: postalAddress ?? undefined,
+        city: city ?? undefined,
+        region: region ?? undefined,
+        postalCode: postalCode ?? undefined,
         ...(passwordHash && { passwordHash }),
       },
     }),
@@ -201,12 +227,20 @@ export async function updateClient(
         dailyDepositAmount,
         depositType,
         preferredCollectionTime: preferredCollectionTime ?? undefined,
+        nextOfKinName: nextOfKinName ?? undefined,
+        nextOfKinRelationship: nextOfKinRelationship ?? undefined,
+        nextOfKinPhone: nextOfKinPhone ?? undefined,
+        nextOfKinEmail: nextOfKinEmail ?? undefined,
+        nextOfKinAddress: nextOfKinAddress ?? undefined,
       },
     }),
   ]);
 
   revalidatePath("/admin/clients");
   revalidatePath("/manager/clients");
+  revalidatePath("/admin/agents");
+  revalidatePath("/manager/agents");
+  if (agentId != null) revalidatePath(`/admin/agents/${agentId}/edit`);
   revalidatePath(`/admin/clients/${clientId}/edit`);
   return { success: true };
 }
@@ -221,4 +255,96 @@ export async function toggleClientStatusForm(_prev: unknown, formData: FormData)
   const result = await toggleClientStatus(clientId);
   if (result.error) redirect(returnTo + "?error=" + encodeURIComponent(result.error));
   redirect(returnTo + "?success=Client+status+updated.");
+}
+
+export async function reassignClient(clientId: number, newAgentId: number): Promise<{ error?: string }> {
+  const { getServerSession } = await import("next-auth");
+  const { authOptions } = await import("@/lib/auth");
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+  const role = (session.user as { role?: string }).role;
+  if (role !== "business_admin") return { error: "Only admin can reassign clients." };
+
+  const [client, agent] = await Promise.all([
+    prisma.client.findUnique({ where: { id: clientId } }),
+    prisma.agent.findUnique({ where: { id: newAgentId, status: "active" } }),
+  ]);
+  if (!client) return { error: "Client not found." };
+  if (!agent) return { error: "Selected agent not found or inactive." };
+
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { agentId: newAgentId },
+  });
+
+  revalidatePath("/admin/clients");
+  revalidatePath("/manager/clients");
+  revalidatePath("/admin/agents");
+  revalidatePath("/manager/agents");
+  if (client.agentId != null) revalidatePath(`/admin/agents/${client.agentId}/edit`);
+  revalidatePath(`/admin/agents/${newAgentId}/edit`);
+  return {};
+}
+
+export async function unassignClient(clientId: number): Promise<{ error?: string }> {
+  const { getServerSession } = await import("next-auth");
+  const { authOptions } = await import("@/lib/auth");
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+  const role = (session.user as { role?: string }).role;
+  if (role !== "business_admin") return { error: "Only admin can unassign clients." };
+
+  const client = await prisma.client.findUnique({ where: { id: clientId } });
+  if (!client) return { error: "Client not found." };
+
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { agentId: null },
+  });
+
+  revalidatePath("/admin/clients");
+  revalidatePath("/manager/clients");
+  revalidatePath("/admin/agents");
+  revalidatePath("/manager/agents");
+  if (client.agentId != null) revalidatePath(`/admin/agents/${client.agentId}/edit`);
+  return {};
+}
+
+export interface UnassignClientState {
+  error?: string;
+  success?: boolean;
+}
+
+export async function unassignClientForm(
+  _prev: UnassignClientState,
+  formData: FormData
+): Promise<UnassignClientState> {
+  const clientIdRaw = formData.get("clientId") as string;
+  const clientId = clientIdRaw ? parseInt(clientIdRaw, 10) : NaN;
+  if (!clientId || isNaN(clientId)) return { error: "Invalid client." };
+
+  const result = await unassignClient(clientId);
+  if (result.error) return { error: result.error };
+  return { success: true };
+}
+
+export interface ReassignClientState {
+  error?: string;
+  success?: boolean;
+}
+
+export async function reassignClientForm(
+  _prev: ReassignClientState,
+  formData: FormData
+): Promise<ReassignClientState> {
+  const clientIdRaw = formData.get("clientId") as string;
+  const newAgentIdRaw = formData.get("newAgentId") as string;
+  const clientId = clientIdRaw ? parseInt(clientIdRaw, 10) : NaN;
+  const newAgentId = newAgentIdRaw ? parseInt(newAgentIdRaw, 10) : NaN;
+  if (!clientId || isNaN(clientId)) return { error: "Invalid client." };
+  if (!newAgentId || isNaN(newAgentId)) return { error: "Please select an agent." };
+
+  const result = await reassignClient(clientId, newAgentId);
+  if (result.error) return { error: result.error };
+  return { success: true };
 }

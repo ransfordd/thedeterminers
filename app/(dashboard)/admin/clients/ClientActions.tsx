@@ -2,20 +2,47 @@
 
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
+import { signIn } from "next-auth/react";
+import { useState } from "react";
 import { toggleClientStatusForm } from "@/app/actions/clients";
+import { getImpersonationToken } from "@/app/actions/impersonate";
 
-type Row = { id: number; status: string };
+type Row = { id: number; userId: number; status: string };
 
 export function ClientActions({ row, isAdmin, returnTo = "/admin/clients" }: { row: Row; isAdmin: boolean; returnTo?: string }) {
+  const [impersonating, setImpersonating] = useState(false);
+  async function handleImpersonate() {
+    setImpersonating(true);
+    try {
+      const res = await getImpersonationToken(row.userId, "/client");
+      if (res.error) {
+        alert(res.error);
+        return;
+      }
+      if (res.token && res.callbackUrl) {
+        if (res.exitToken && typeof sessionStorage !== "undefined") sessionStorage.setItem("exit_impersonation", res.exitToken);
+        await signIn("credentials", {
+          impersonationToken: res.token,
+          callbackUrl: res.callbackUrl,
+          redirect: true,
+        });
+      }
+    } finally {
+      setImpersonating(false);
+    }
+  }
   return (
     <div className="flex items-center gap-1">
       {isAdmin && (
-        <span
-          className="inline-flex cursor-not-allowed rounded border border-gray-300 bg-gray-100 px-2 py-1 text-xs text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400"
-          title="Impersonation coming soon"
+        <button
+          type="button"
+          onClick={handleImpersonate}
+          disabled={impersonating}
+          className="inline-flex rounded border border-indigo-500 bg-transparent px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/30 disabled:opacity-50"
+          title="Sign in as this client"
         >
-          <i className="fas fa-sign-in-alt mr-1" /> Login
-        </span>
+          <i className={`fas ${impersonating ? "fa-spinner fa-spin" : "fa-sign-in-alt"} mr-1`} /> Login
+        </button>
       )}
       <Link
         href={`/admin/clients/${row.id}/edit`}

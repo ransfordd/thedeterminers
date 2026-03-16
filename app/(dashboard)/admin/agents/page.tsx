@@ -8,6 +8,7 @@ import { AgentActions } from "./AgentActions";
 
 type AgentRow = {
   id: number;
+  userId: number;
   agentCode: string;
   firstName: string;
   lastName: string;

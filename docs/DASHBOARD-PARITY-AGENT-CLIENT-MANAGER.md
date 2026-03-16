@@ -42,7 +42,7 @@ Comparison of the current Next.js agent, client, and manager dashboards against 
 | Item | PHP | Next.js | Notes |
 |------|-----|---------|--------|
 | **Susu Collection Tracker** | Yes: full “Susu Collection Tracker” component (current cycle, calendar, progress) | **Missing** | PHP includes `renderSusuTracker($clientId, null, false)` on the dashboard. |
-| **Emergency Withdrawal (on dashboard)** | Yes: “Emergency Withdrawal” button in Current Cycle Total card when eligible (e.g. ≥3 days, eligibility check) | **Missing** | Button links to `emergency_withdrawal_request.php?cycle_id=...`. |
+| **Emergency Withdrawal (on dashboard)** | Yes: “Emergency Withdrawal” button in Current Cycle Total card when eligible (≥2 days paid; commission per fixed/flexible rules) | **Done** | Button links to `/client/emergency-withdrawal?cycle_id=...`. |
 | **Transaction History quick action** | Yes: “Transaction History” – “View and filter all your transactions” | **Missing** | Next.js has no “Transaction History” action; PHP has it and “Cycles Completed” as separate actions. |
 | **Cycles Completed quick action** | Yes: “Cycles Completed” – “View detailed monthly cycle history” | Link only on stat card | Next.js links from “Cycles Completed” stat card to `/client/cycles-completed` but does not have a dedicated quick action card like PHP. |
 | **Total Collected calculation** | `getAllTimeCollectionsNet`: sum of collections **minus** agent fees for completed cycles | Raw sum of all collected amounts | Next.js does not subtract agent fees; client-facing “Total Collected” may be higher than in PHP. |

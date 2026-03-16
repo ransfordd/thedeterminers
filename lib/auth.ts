@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { normalizePhone } from "@/lib/sms";
+import { verifyImpersonationToken } from "@/lib/impersonate";
 
 /** Resolve role from session (lowercase). If missing from JWT, fetches from DB so manager access to admin routes works. */
 export async function resolveRole(session: Session | null): Promise<string> {
@@ -33,8 +34,25 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         usernameOrEmail: { label: "Email, username or phone", type: "text" },
         password: { label: "Password", type: "password" },
+        impersonationToken: { label: "Impersonation token", type: "text" },
       },
       async authorize(credentials) {
+        const impersonationToken = credentials?.impersonationToken as string | undefined;
+        if (impersonationToken?.trim()) {
+          const userId = verifyImpersonationToken(impersonationToken.trim());
+          if (userId == null) return null;
+          const user = await prisma.user.findUnique({
+            where: { id: userId, status: "active" },
+          });
+          if (!user) return null;
+          return {
+            id: String(user.id),
+            email: user.email,
+            name: `${user.firstName} ${user.lastName}`,
+            role: user.role,
+            image: user.profileImage ?? undefined,
+          };
+        }
         if (!credentials?.usernameOrEmail || !credentials?.password) return null;
         const input = String(credentials.usernameOrEmail).trim();
         const phoneConditions = [{ phone: input }];

@@ -148,6 +148,17 @@ export async function updateAgent(
   const lastName = (formData.get("lastName") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
   const phone = (formData.get("phone") as string)?.trim() || null;
+  const address = (formData.get("address") as string)?.trim() || null;
+  const middleName = (formData.get("middleName") as string)?.trim() || null;
+  const dateOfBirthRaw = (formData.get("dateOfBirth") as string)?.trim() || null;
+  const dateOfBirth = dateOfBirthRaw ? new Date(dateOfBirthRaw) : null;
+  const gender = (formData.get("gender") as string)?.trim() || null;
+  const maritalStatus = (formData.get("maritalStatus") as string)?.trim() || null;
+  const nationality = (formData.get("nationality") as string)?.trim() || null;
+  const postalAddress = (formData.get("postalAddress") as string)?.trim() || null;
+  const city = (formData.get("city") as string)?.trim() || null;
+  const region = (formData.get("region") as string)?.trim() || null;
+  const postalCode = (formData.get("postalCode") as string)?.trim() || null;
   const commissionRateRaw = formData.get("commissionRate") as string;
   const commissionRate = commissionRateRaw ? parseFloat(commissionRateRaw) : NaN;
   if (!firstName || !lastName || !email) return { error: "First name, last name, and email are required." };
@@ -171,6 +182,16 @@ export async function updateAgent(
         lastName,
         email,
         phone: phone ?? undefined,
+        address: address ?? undefined,
+        middleName: middleName ?? undefined,
+        dateOfBirth: dateOfBirth ?? undefined,
+        gender: gender ?? undefined,
+        maritalStatus: maritalStatus ?? undefined,
+        nationality: nationality ?? undefined,
+        postalAddress: postalAddress ?? undefined,
+        city: city ?? undefined,
+        region: region ?? undefined,
+        postalCode: postalCode ?? undefined,
         ...(passwordHash && { passwordHash }),
       },
     }),

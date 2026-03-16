@@ -235,17 +235,21 @@ export async function getClientDashboardData(userId: number) {
 
   const emergencyEligible =
     !!cycleSummary.activeCycle &&
-    cycleSummary.daysCollected >= 3 &&
+    cycleSummary.daysCollected >= 2 &&
     !existingEmergencyRequest;
 
   let emergencyWithdrawalEligible: { eligible: true; cycleId: number; availableEmergencyAmount: number; emergencyCommissionAmount: number } | { eligible: false; cycleId: null };
   if (emergencyEligible && cycleSummary.activeCycle) {
     const dailyAmount = cycleSummary.activeCycle.dailyAmount;
-    const commissionAmount = dailyAmount; // 1 day commission
-    const availableEmergencyAmount = Math.max(
-      0,
-      cycleSummary.daysCollected * dailyAmount - commissionAmount
-    );
+    const totalCollected = cycleSummary.totalCollectedInCycle;
+    const daysCollected = cycleSummary.daysCollected;
+    const { computeCommission } = await import("@/lib/commission");
+    const { commission: commissionAmount, amountToClient: availableEmergencyAmount } = computeCommission({
+      isFlexible: cycleSummary.activeCycle.isFlexible ?? false,
+      dailyAmount,
+      totalCollected,
+      daysCollected,
+    });
     emergencyWithdrawalEligible = {
       eligible: true,
       cycleId: cycleSummary.activeCycle.id,

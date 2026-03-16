@@ -38,6 +38,9 @@ export default async function AdminClientEditPage({
 
   if (!client) notFound();
 
+  const u = client.user;
+  const dob = u.dateOfBirth ? (typeof u.dateOfBirth === "string" ? u.dateOfBirth : new Date(u.dateOfBirth).toISOString().slice(0, 10)) : "";
+
   const returnToList = role === "manager" ? "/manager/clients" : "/admin/clients";
 
   return (
@@ -49,15 +52,30 @@ export default async function AdminClientEditPage({
         backHref={returnToList}
         variant="primary"
       />
-      <ModernCard title="Client details" subtitle="Update profile and assignment" icon={<i className="fas fa-edit" />}>
+      <ModernCard title="Client details" subtitle="Same fields as client account settings plus admin-only options" icon={<i className="fas fa-edit" />}>
         <EditClientForm
           clientId={client.id}
           defaultValue={{
-            firstName: client.user.firstName,
-            lastName: client.user.lastName,
-            email: client.user.email,
-            phone: client.user.phone ?? "",
-            agentId: client.agentId,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            email: u.email,
+            phone: u.phone ?? "",
+            address: u.address ?? "",
+            middleName: u.middleName ?? "",
+            dateOfBirth: dob,
+            gender: u.gender ?? "",
+            maritalStatus: u.maritalStatus ?? "",
+            nationality: u.nationality ?? "",
+            postalAddress: u.postalAddress ?? "",
+            city: u.city ?? "",
+            region: u.region ?? "",
+            postalCode: u.postalCode ?? "",
+            nextOfKinName: client.nextOfKinName ?? "",
+            nextOfKinRelationship: client.nextOfKinRelationship ?? "",
+            nextOfKinPhone: client.nextOfKinPhone ?? "",
+            nextOfKinEmail: client.nextOfKinEmail ?? "",
+            nextOfKinAddress: client.nextOfKinAddress ?? "",
+            agentId: client.agentId ?? "",
             dailyDepositAmount: toNum(client.dailyDepositAmount),
             depositType: client.depositType,
             preferredCollectionTime: client.preferredCollectionTime ?? "",

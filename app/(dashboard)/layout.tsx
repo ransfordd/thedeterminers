@@ -4,6 +4,7 @@ import { authOptions, resolveRole } from "@/lib/auth";
 import { getRecentNotifications } from "@/lib/dashboard";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { ImpersonationBanner } from "@/components/dashboard/ImpersonationBanner";
 import { prisma } from "@/lib/db";
 
 export default async function DashboardLayout({
@@ -53,6 +54,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+      <ImpersonationBanner role={role} />
       <DashboardHeader
         user={{
           name: displayName,

@@ -41,6 +41,7 @@ export async function getAgentDashboardData(userId: number) {
         collectionDate: { gte: todayStart, lt: todayEnd },
         collectionStatus: "collected",
         susuCycle: { clientId: { in: clientIds } },
+        collectedById: agent.id,
       },
       _sum: { collectedAmount: true },
     }),
@@ -49,6 +50,7 @@ export async function getAgentDashboardData(userId: number) {
         paymentDate: { gte: todayStart, lt: todayEnd },
         paymentStatus: "paid",
         loan: { clientId: { in: clientIds } },
+        collectedById: agent.id,
       },
       _sum: { amountPaid: true },
     }),
@@ -56,6 +58,7 @@ export async function getAgentDashboardData(userId: number) {
       where: {
         collectionStatus: "collected",
         susuCycle: { clientId: { in: clientIds } },
+        collectedById: agent.id,
       },
       _sum: { collectedAmount: true },
     }),
@@ -63,6 +66,7 @@ export async function getAgentDashboardData(userId: number) {
       where: {
         paymentStatus: "paid",
         loan: { clientId: { in: clientIds } },
+        collectedById: agent.id,
       },
       _sum: { amountPaid: true },
     }),

@@ -38,6 +38,7 @@ export async function getClientsList(agentId?: number) {
   });
   return list.map((c) => ({
     id: c.id,
+    userId: c.user.id,
     username: c.user.username,
     firstName: c.user.firstName,
     lastName: c.user.lastName,
@@ -162,6 +163,7 @@ export async function getAgentsList() {
         where: {
           susuCycle: { clientId: { in: clientIds } },
           collectionStatus: "collected",
+          collectedById: a.id,
         },
         _sum: { collectedAmount: true },
       }),
@@ -171,6 +173,7 @@ export async function getAgentsList() {
     ]);
     result.push({
       id: a.id,
+      userId: a.user.id,
       agentCode: a.agentCode,
       firstName: a.user.firstName,
       lastName: a.user.lastName,

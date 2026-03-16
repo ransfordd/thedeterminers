@@ -63,19 +63,26 @@ export default async function ClientEmergencyWithdrawalPage({
     );
   }
 
-  const daysCollected = await prisma.dailyCollection.count({
-    where: { susuCycleId: cycleId, collectionStatus: "collected" },
-  });
-  const existingRequest = await prisma.emergencyWithdrawalRequest.findFirst({
-    where: { clientId: client.id, susuCycleId: cycleId, status: { not: "rejected" } },
-  });
+  const [daysCollected, totalCollectedAgg, existingRequest] = await Promise.all([
+    prisma.dailyCollection.count({
+      where: { susuCycleId: cycleId, collectionStatus: "collected" },
+    }),
+    prisma.dailyCollection.aggregate({
+      where: { susuCycleId: cycleId, collectionStatus: "collected" },
+      _sum: { collectedAmount: true },
+    }),
+    prisma.emergencyWithdrawalRequest.findFirst({
+      where: { clientId: client.id, susuCycleId: cycleId, status: { not: "rejected" } },
+    }),
+  ]);
+  const totalCollected = toNum(totalCollectedAgg._sum.collectedAmount);
 
-  if (daysCollected < 3) {
+  if (daysCollected < 2) {
     return (
       <>
         <PageHeader title="Emergency Withdrawal" subtitle="Request an emergency withdrawal" icon={<i className="fas fa-exclamation-triangle" />} backHref="/client" variant="primary" />
-        <ModernCard title="Not eligible yet" subtitle="Minimum 3 days required">
-          <p className="text-gray-600 dark:text-gray-400">You must have paid at least 3 days in this cycle to request an emergency withdrawal. You have {daysCollected} day(s) collected.</p>
+        <ModernCard title="Not eligible yet" subtitle="Minimum 2 days required">
+          <p className="text-gray-600 dark:text-gray-400">You must have paid at least 2 days in this cycle to request an emergency withdrawal. You have {daysCollected} day(s) collected.</p>
           <a href="/client" className="inline-block mt-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Back to Dashboard</a>
         </ModernCard>
       </>
@@ -95,8 +102,14 @@ export default async function ClientEmergencyWithdrawalPage({
   }
 
   const dailyAmount = toNum(cycle.dailyAmount);
-  const commissionAmount = dailyAmount;
-  const availableAmount = Math.max(0, daysCollected * dailyAmount - commissionAmount);
+  const isFlexible = cycle.isFlexible ?? false;
+  const { computeCommission } = await import("@/lib/commission");
+  const { commission: commissionAmount, amountToClient: availableAmount } = computeCommission({
+    isFlexible,
+    dailyAmount,
+    totalCollected,
+    daysCollected,
+  });
 
   return (
     <>
@@ -109,7 +122,9 @@ export default async function ClientEmergencyWithdrawalPage({
       />
       <ModernCard
         title="Request emergency withdrawal"
-        subtitle={`Cycle has ${daysCollected} days collected. One day commission (${formatCurrency(commissionAmount)}) will be deducted.`}
+        subtitle={isFlexible
+          ? `Cycle has ${daysCollected} days collected (total ${formatCurrency(totalCollected)}). Commission (${formatCurrency(commissionAmount)}) will be deducted.`
+          : `Cycle has ${daysCollected} days collected. One day commission (${formatCurrency(commissionAmount)}) will be deducted.`}
       >
         <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
           <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Available amount: {formatCurrency(availableAmount)}</p>

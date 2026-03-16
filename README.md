@@ -37,6 +37,8 @@ Use this workflow to run everything on your machine for testing; when satisfied,
    - `DATABASE_URL="postgresql://susu:susu_local@localhost:5433/susu_system?schema=public"` (already correct for Docker above)
    - `NEXTAUTH_URL="http://localhost:3000"`
    - `NEXTAUTH_SECRET` to any long random string (e.g. `openssl rand -base64 32`)
+   - Optional: `ARKESEL_API_KEY` and `ARKESEL_SENDER_ID` for SMS notifications (payments, withdrawals, etc.). If unset, SMS is skipped.
+   - Optional: `CRON_SECRET` for the month-end settlement cron (`/api/cron/month-end`). Required if you call that endpoint (e.g. Vercel Cron or external scheduler).
 
 3. **Install, migrate, seed**
    ```bash
@@ -62,7 +64,7 @@ After running `npx prisma db seed` (or `npm run db:seed`), you can sign in with 
 | Agent   | agent@example.com     | agent123   |
 | Client  | client@example.com    | client123  |
 
-You can log in with either **email** or **username** (e.g. the email above, or the username set in seed). Re-running seed resets the admin password to `admin123`. Override defaults with env vars: `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, etc.
+You can log in with **email**, **username**, or **phone number** (same password). Re-running seed resets the admin password to `admin123`. Override defaults with env vars: `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, etc.
 
 5. **When you’re done testing**  
    Stop containers: `docker compose down`. To deploy online, push your code and set production env vars (and a production Postgres/Redis) on your host.
@@ -132,4 +134,4 @@ Project documentation lives in **`docs/`** so anyone can understand the project,
 - [**API.md**](docs/API.md) – Route Handlers and public endpoints
 - [**FUNCTIONS.md**](docs/FUNCTIONS.md) – Key business logic and engines (index; use TSDoc in code for details)
 
-Keep these docs updated as you add features, screens, or APIs.
+**Keep these docs updated whenever you add features, screens, APIs, or change business rules (e.g. commission, login, SMS, cron).**

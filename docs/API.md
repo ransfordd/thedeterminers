@@ -24,6 +24,12 @@ This document lists Route Handlers and any public API so a reader knows method, 
 | POST | `/api/notifications/mark-read` | Authenticated | Mark notification(s) as read; body: `{ ids: number[] }`. |
 | GET | `/api/notifications` | Authenticated | List notifications for current user (optional query: unread only). |
 
+### Cron (month-end settlement)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET or POST | `/api/cron/month-end` | `CRON_SECRET`: send `Authorization: Bearer <CRON_SECRET>` or query `?secret=<CRON_SECRET>` | Runs month-end settlement: closes previous month’s active Susu cycles (marks cancelled), computes commission (fixed/flexible rules), credits (total − commission) to each client’s savings, then ensures a new cycle for the current month for all active clients. Response: `{ ok, closed, credited, errors[] }`. Call at the start of each month (e.g. Vercel Cron `0 0 1 * *`). |
+
 ### Future API (placeholders)
 
 - Login / logout: handled by Auth.js and Server Actions, not necessarily as REST.

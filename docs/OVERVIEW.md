@@ -4,10 +4,13 @@
 
 The Susu System is a savings and loan management platform. It supports:
 
-- **Susu (rotating savings):** Clients save a fixed or flexible daily amount over a cycle (e.g. monthly). Agents record daily collections; at cycle end the client receives a payout (minus agent commission). Payouts can be moved to savings or transferred.
+- **Susu (rotating savings):** Clients save a fixed or flexible daily amount over a cycle (e.g. monthly). Agents record daily collections. **Commission:** Fixed = one day’s amount (company share); flexible = total collected ÷ days paid (one day’s average). At month end, previous month’s cycle is closed (cancelled if incomplete), (total − commission) is credited to the client’s savings account, and a new cycle starts for the new month. See [FEATURES.md](./FEATURES.md) for commission and month-end details.
 - **Loans:** Loan products, applications, approval workflow, disbursement, repayments, and penalties. Repayment via cash, mobile money, bank transfer, or Susu deduction.
-- **Savings:** Savings accounts, emergency withdrawals, and linkage to Susu payouts.
+- **Savings:** Savings accounts, emergency withdrawals (minimum 2 days paid; commission deducted per rules above), and linkage to Susu payouts.
 - **Roles:** Business Admin (full control), Manager (agents, clients, reports), Agent (collections, applications, commission), Client (schedules, notifications, savings).
+- **Login:** Users sign in with **email**, **username**, or **phone number** (same password). Phone is normalized (e.g. 0xxx → 233xxx for Ghana).
+- **SMS (Arkesel):** Optional. If `ARKESEL_API_KEY` and `ARKESEL_SENDER_ID` are set, the app sends SMS for key events (payment recorded, loan application, emergency withdrawal request, etc.). See `.env.example`.
+- **Impersonation:** Admin and Manager can “Login” as a client or agent from Client/Agent management; a “Back to Admin Dashboard” banner appears on the client/agent dashboard to restore the admin session.
 
 ## Tech stack
 
