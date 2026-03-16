@@ -3,6 +3,7 @@ import type { Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { normalizePhone } from "@/lib/sms";
 
 /** Resolve role from session (lowercase). If missing from JWT, fetches from DB so manager access to admin routes works. */
 export async function resolveRole(session: Session | null): Promise<string> {
@@ -30,16 +31,19 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        usernameOrEmail: { label: "Username or Email", type: "text" },
+        usernameOrEmail: { label: "Email, username or phone", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.usernameOrEmail || !credentials?.password) return null;
         const input = String(credentials.usernameOrEmail).trim();
+        const phoneConditions = [{ phone: input }];
+        const normalized = normalizePhone(input);
+        if (normalized) phoneConditions.push({ phone: normalized });
         const user = await prisma.user.findFirst({
           where: {
             status: "active",
-            OR: [{ email: input }, { username: input }],
+            OR: [{ email: input }, { username: input }, ...phoneConditions],
           },
         });
         if (!user) return null;

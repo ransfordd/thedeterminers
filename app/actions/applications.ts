@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { sendSmsToUserIds } from "@/lib/sms";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export type ApplicationState = { success?: boolean; error?: string; applicationNumber?: string };
@@ -141,6 +142,13 @@ export async function createLoanApplication(
       message: n.message,
     })),
   });
+
+  const smsUserIds = notifications.map((n) => n.userId);
+  await sendSmsToUserIds(
+    prisma,
+    smsUserIds,
+    `Loan application GHS ${amountStr} from ${clientName}. Ref: ${appNumber}. - The Determiners`
+  );
 
   revalidatePath("/agent/applications");
   revalidatePath("/agent/applications/new");

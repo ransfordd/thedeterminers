@@ -8,6 +8,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { ensureSusuCycleForMonth } from "@/lib/susu-cycle";
 import { formatAmountForDisplay } from "@/lib/currency";
 import { creditClientSavings } from "@/lib/savings";
+import { sendSmsToUserIds } from "@/lib/sms";
 
 export type CollectState = { success?: boolean; error?: string };
 
@@ -218,6 +219,8 @@ export async function recordCollection(
             message: `Your Susu collection of GHS ${amountStr} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
           },
         });
+        const susuSmsIds = [clientForNotif.userId, userId].filter((id): id is number => typeof id === "number" && id > 0);
+        await sendSmsToUserIds(prisma, susuSmsIds, `Susu collection GHS ${amountStr} recorded. - The Determiners`);
       }
     }
 
@@ -277,6 +280,7 @@ export async function recordCollection(
             message: `Your loan payment of GHS ${amountStr} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
           },
         });
+        await sendSmsToUserIds(prisma, [clientForLoanNotif.userId], `Loan payment GHS ${amountStr} recorded. - The Determiners`);
       }
     }
 

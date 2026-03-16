@@ -8,6 +8,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { ensureSusuCycleForMonth } from "@/lib/susu-cycle";
 import { formatAmountForDisplay } from "@/lib/currency";
 import { creditClientSavings } from "@/lib/savings";
+import { sendSmsToUserIds } from "@/lib/sms";
 
 export type AdminPaymentState = { success?: boolean; error?: string };
 
@@ -108,6 +109,9 @@ export async function recordAdminPayment(
             },
           });
         }
+        const loanSmsIds = [clientForNotif.userId, clientForNotif.agent?.userId, adminUserId].filter((id): id is number => typeof id === "number" && id > 0);
+        await sendSmsToUserIds(prisma, loanSmsIds, `Loan payment GHS ${amountStr} recorded for ${clientName}. - The Determiners`);
+        revalidatePath("/client");
       }
     } else {
       const adminUserId = parseInt((session.user as { id?: string }).id ?? "0", 10);
@@ -175,8 +179,11 @@ export async function recordAdminPayment(
             },
           });
         }
+        const cycleCompleteSmsIds = [clientForNotif?.userId, adminUserId].filter((id): id is number => typeof id === "number" && id > 0);
+        await sendSmsToUserIds(prisma, cycleCompleteSmsIds, `Susu cycle complete. GHS ${amtStr} credited to savings for ${clientName}. - The Determiners`);
         revalidatePath("/admin/payments");
         revalidatePath("/admin");
+        revalidatePath("/client");
         return { success: true };
       }
 
@@ -311,11 +318,14 @@ export async function recordAdminPayment(
             },
           });
         }
+        const susuSmsIds = [clientForNotif.userId, clientForNotif.agent?.userId, adminUserId].filter((id): id is number => typeof id === "number" && id > 0);
+        await sendSmsToUserIds(prisma, susuSmsIds, `Susu collection GHS ${amountStr} recorded for ${clientName}. - The Determiners`);
       }
     }
 
     revalidatePath("/admin/payments");
     revalidatePath("/admin");
+    revalidatePath("/client");
     return { success: true };
   } catch (e) {
     console.error("recordAdminPayment error:", e);

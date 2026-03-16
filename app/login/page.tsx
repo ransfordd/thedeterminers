@@ -27,7 +27,7 @@ function LoginForm() {
         redirect: false,
       });
       if (res?.error) {
-        setError("Invalid username/email or password.");
+        setError("Invalid email, username, phone or password.");
         setLoading(false);
         return;
       }
@@ -87,7 +87,7 @@ function LoginForm() {
               <div>
                 <label htmlFor="usernameOrEmail" className="flex items-center gap-2 text-gray-800 font-normal text-[0.95rem] mb-2">
                   <i className="fas fa-user text-[#667eea] w-4 text-center" />
-                  Username or Email
+                  Email, username or phone
                 </label>
                 <input
                   id="usernameOrEmail"
@@ -95,7 +95,7 @@ function LoginForm() {
                   value={usernameOrEmail}
                   onChange={(e) => setUsernameOrEmail(e.target.value)}
                   required
-                  placeholder="Enter your username or email"
+                  placeholder="Email, username or phone number"
                   className="login-input w-full border-2 border-[#667eea]/80 rounded-[10px] px-4 py-3.5 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/20 outline-none transition-all"
                 />
               </div>
