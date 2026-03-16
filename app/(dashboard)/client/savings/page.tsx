@@ -190,9 +190,10 @@ export default async function ClientSavingsPage() {
 
       <SectionTitle
         icon={<i className="fas fa-bolt text-amber-500" />}
-        title="Quick Actions"
         className="mb-3"
-      />
+      >
+        Quick Actions
+      </SectionTitle>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <QuickActionCard
           href={activeCycle ? `/client/savings/pay-cycle?cycle_id=${activeCycle.id}` : "/client/savings"}
