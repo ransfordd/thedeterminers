@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { getSecuritySettings } from "@/lib/system-settings";
 
 export interface CreateAgentState {
   error?: string;
@@ -29,8 +30,9 @@ export async function createAgent(
   if (password !== confirmPassword) {
     return { error: "Passwords do not match." };
   }
-  if (password.length < 6) {
-    return { error: "Password must be at least 6 characters long." };
+  const { passwordMinLength } = await getSecuritySettings();
+  if (password.length < passwordMinLength) {
+    return { error: `Password must be at least ${passwordMinLength} characters long.` };
   }
   const commissionRate = commissionRateRaw ? parseFloat(commissionRateRaw) : NaN;
   if (isNaN(commissionRate) || commissionRate < 0 || commissionRate > 100) {

@@ -1,9 +1,11 @@
 /**
  * SMS via Arkesel API.
  * Set ARKESEL_API_KEY and ARKESEL_SENDER_ID in env. If unset, sends are no-ops.
+ * Respects system setting sms_enabled (when false, no SMS is sent).
  */
 
 import type { PrismaClient } from "@prisma/client";
+import { isSmsEnabled } from "@/lib/system-settings";
 
 const ARKESEL_URL = "https://sms.arkesel.com/api/v2/sms/send";
 
@@ -21,6 +23,11 @@ export function normalizePhone(phone: string): string | null {
  * Returns true if sent (or no recipients), false if API key/sender missing or request failed.
  */
 export async function sendSms(recipients: string[], message: string): Promise<boolean> {
+  const enabled = await isSmsEnabled();
+  if (!enabled) {
+    console.warn("[SMS] Skipped: SMS notifications are disabled in system settings.");
+    return false;
+  }
   const apiKey = process.env.ARKESEL_API_KEY;
   const sender = process.env.ARKESEL_SENDER_ID;
   if (!apiKey || !sender) {
@@ -69,6 +76,8 @@ export async function sendSmsToUserIds(
   message: string
 ): Promise<void> {
   if (userIds.length === 0) return;
+  const enabled = await isSmsEnabled();
+  if (!enabled) return;
   try {
     const [users, clients] = await Promise.all([
       prisma.user.findMany({

@@ -67,3 +67,55 @@ export async function createProduct(_prev: ProductState, formData: FormData): Pr
   revalidatePath("/admin/products/new");
   return { success: true };
 }
+
+export async function updateProduct(_prev: ProductState, formData: FormData): Promise<ProductState> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Not authenticated" };
+  if ((session.user as { role?: string }).role !== "business_admin") return { error: "Not authorized" };
+
+  const productId = parseInt(String(formData.get("productId") ?? "0"), 10);
+  if (!productId) return { error: "Invalid product" };
+
+  const productName = (formData.get("productName") as string)?.trim();
+  const productCode = (formData.get("productCode") as string)?.trim().toUpperCase();
+  const description = (formData.get("description") as string)?.trim() || null;
+  const minAmount = parseFloat((formData.get("minAmount") as string) ?? "0");
+  const maxAmount = parseFloat((formData.get("maxAmount") as string) ?? "0");
+  const interestRate = parseFloat((formData.get("interestRate") as string) ?? "0");
+  const interestType = ((formData.get("interestType") as string) === "reducing_balance" ? "reducing_balance" : "flat") as "flat" | "reducing_balance";
+  const minTermMonths = parseInt((formData.get("minTermMonths") as string) ?? "1", 10);
+  const maxTermMonths = parseInt((formData.get("maxTermMonths") as string) ?? "12", 10);
+  const processingFeeRate = parseFloat((formData.get("processingFeeRate") as string) ?? "0");
+  const status = ((formData.get("status") as string) === "inactive" ? "inactive" : "active") as "active" | "inactive";
+
+  if (!productName || !productCode) return { error: "Product name and code are required" };
+  if (minAmount < 0 || maxAmount < minAmount) return { error: "Invalid amount range" };
+  if (minTermMonths < 1 || maxTermMonths < minTermMonths) return { error: "Invalid term range" };
+
+  const existing = await prisma.loanProduct.findUnique({ where: { id: productId } });
+  if (!existing) return { error: "Product not found" };
+
+  const codeConflict = await prisma.loanProduct.findFirst({ where: { productCode, id: { not: productId } } });
+  if (codeConflict) return { error: "Product code already in use by another product" };
+
+  await prisma.loanProduct.update({
+    where: { id: productId },
+    data: {
+      productName,
+      productCode,
+      description,
+      minAmount: new Decimal(minAmount),
+      maxAmount: new Decimal(maxAmount),
+      interestRate: new Decimal(interestRate),
+      interestType,
+      minTermMonths,
+      maxTermMonths,
+      processingFeeRate: new Decimal(processingFeeRate),
+      status,
+    },
+  });
+
+  revalidatePath("/admin/products");
+  revalidatePath(`/admin/products/${productId}/edit`);
+  return { success: true };
+}

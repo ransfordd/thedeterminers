@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { businessInfo } from "@/lib/public-business";
+import { getBusinessInfoFromDb } from "@/lib/business-settings";
 import { ServicesHeroSlider } from "@/components/public/ServicesHeroSlider";
 
 export const metadata = {
@@ -141,7 +141,8 @@ const BENEFITS = [
   },
 ];
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  const businessInfo = await getBusinessInfoFromDb();
   return (
     <div>
       <ServicesHeroSlider />

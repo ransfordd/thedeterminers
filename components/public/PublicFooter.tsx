@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { businessInfo } from "@/lib/public-business";
+import type { BusinessInfo } from "@/lib/public-business";
 
-export function PublicFooter() {
+export function PublicFooter({ businessInfo }: { businessInfo: BusinessInfo }) {
   return (
     <footer className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">

@@ -84,7 +84,8 @@ export function DashboardSidebar({ role, currentPath, className = "" }: Dashboar
     >
       <nav className="p-3 space-y-0.5">
         {links.map((link) => {
-          const isActive = currentPath === link.href || currentPath.startsWith(link.href + "/");
+          const isDashboardRoot = ["/admin", "/manager", "/agent", "/client"].includes(link.href);
+          const isActive = isDashboardRoot ? currentPath === link.href : (currentPath === link.href || currentPath.startsWith(link.href + "/"));
           return (
             <Link
               key={link.href}

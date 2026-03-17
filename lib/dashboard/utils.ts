@@ -20,6 +20,7 @@ export function getMonthStart(): Date {
   return d;
 }
 
-export function formatCurrency(amount: number): string {
-  return `GHS ${Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export function formatCurrency(amount: number, currency: string = "GHS"): string {
+  const sym = (currency || "GHS").trim().toUpperCase();
+  return `${sym} ${Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

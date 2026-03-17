@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { businessInfo } from "@/lib/public-business";
+import { getBusinessInfoFromDb } from "@/lib/business-settings";
 import { NewsHeroSlider } from "@/components/public/NewsHeroSlider";
 
 export const metadata = {
@@ -172,7 +172,8 @@ const articles = [
   },
 ];
 
-export default function NewsPage() {
+export default async function NewsPage() {
+  const businessInfo = await getBusinessInfoFromDb();
   return (
     <div>
       <NewsHeroSlider />

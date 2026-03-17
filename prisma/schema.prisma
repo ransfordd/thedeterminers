@@ -487,6 +487,18 @@ model SystemSetting {
   updatedBy User? @relation(fields: [updatedById], references: [id])
 }
 
+model LoginAttempt {
+  id           Int       @id @default(autoincrement())
+  identifier   String    @db.VarChar(255)
+  attemptCount Int       @default(0) @map("attempt_count")
+  lockedUntil  DateTime? @map("locked_until") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@unique([identifier])
+  @@index([identifier])
+  @@map("login_attempt")
+}
+
 model HolidaysCalendar {
   id          Int        @id @default(autoincrement())
   holidayDate DateTime  @unique @map("holiday_date") @db.Date

@@ -5,6 +5,7 @@ import { getClientByUserId } from "@/lib/dashboard";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { formatCurrency } from "@/lib/dashboard";
+import { getCurrency } from "@/lib/system-settings";
 import { EmergencyWithdrawalForm } from "./EmergencyWithdrawalForm";
 
 function toNum(d: unknown): number {
@@ -63,7 +64,7 @@ export default async function ClientEmergencyWithdrawalPage({
     );
   }
 
-  const [daysCollected, totalCollectedAgg, existingRequest] = await Promise.all([
+  const [daysCollected, totalCollectedAgg, existingRequest, currency] = await Promise.all([
     prisma.dailyCollection.count({
       where: { susuCycleId: cycleId, collectionStatus: "collected" },
     }),
@@ -74,6 +75,7 @@ export default async function ClientEmergencyWithdrawalPage({
     prisma.emergencyWithdrawalRequest.findFirst({
       where: { clientId: client.id, susuCycleId: cycleId, status: { not: "rejected" } },
     }),
+    getCurrency(),
   ]);
   const totalCollected = toNum(totalCollectedAgg._sum.collectedAmount);
 
@@ -123,11 +125,11 @@ export default async function ClientEmergencyWithdrawalPage({
       <ModernCard
         title="Request emergency withdrawal"
         subtitle={isFlexible
-          ? `Cycle has ${daysCollected} days collected (total ${formatCurrency(totalCollected)}). Commission (${formatCurrency(commissionAmount)}) will be deducted.`
-          : `Cycle has ${daysCollected} days collected. One day commission (${formatCurrency(commissionAmount)}) will be deducted.`}
+          ? `Cycle has ${daysCollected} days collected (total ${formatCurrency(totalCollected, currency)}). Commission (${formatCurrency(commissionAmount, currency)}) will be deducted.`
+          : `Cycle has ${daysCollected} days collected. One day commission (${formatCurrency(commissionAmount, currency)}) will be deducted.`}
       >
         <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Available amount: {formatCurrency(availableAmount)}</p>
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Available amount: {formatCurrency(availableAmount, currency)}</p>
         </div>
         <EmergencyWithdrawalForm cycleId={cycleId} availableAmount={availableAmount} />
       </ModernCard>

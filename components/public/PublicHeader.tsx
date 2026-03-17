@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { businessInfo } from "@/lib/public-business";
+import type { BusinessInfo } from "@/lib/public-business";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -13,7 +13,7 @@ const navLinks = [
   { href: "/news", label: "News" },
 ];
 
-export function PublicHeader() {
+export function PublicHeader({ businessInfo }: { businessInfo: BusinessInfo }) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 

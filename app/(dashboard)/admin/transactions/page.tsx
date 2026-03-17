@@ -5,9 +5,11 @@ import { authOptions } from "@/lib/auth";
 import { getTransactionsListFiltered } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { formatCurrency } from "@/lib/dashboard";
+import { getCurrency } from "@/lib/system-settings";
 import { TransactionFilters } from "./TransactionFilters";
 import { TransactionActions, TransactionRowActions } from "./TransactionActions";
 import { deleteManualTransactionForm } from "@/app/actions/manual-transactions";
+import { deleteCollectionForm, deleteLoanPaymentForm } from "@/app/actions/transactions";
 
 export default async function AdminTransactionsPage({
   searchParams,
@@ -24,7 +26,10 @@ export default async function AdminTransactionsPage({
   const fromDate = params.from_date ? new Date(params.from_date + "T00:00:00Z") : undefined;
   const toDate = params.to_date ? new Date(params.to_date + "T23:59:59Z") : undefined;
 
-  const transactions = await getTransactionsListFiltered(200, typeFilter, fromDate, toDate);
+  const [transactions, currency] = await Promise.all([
+    getTransactionsListFiltered(200, typeFilter, fromDate, toDate),
+    getCurrency(),
+  ]);
   const backHref = role === "manager" ? "/manager" : "/admin";
   const serializable = transactions.map((t) => ({
     type: t.type,
@@ -110,7 +115,7 @@ export default async function AdminTransactionsPage({
                       {new Date(t.date).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
                     </td>
                     <td className="py-2 px-3 font-medium text-gray-900 dark:text-white">{t.clientName}</td>
-                    <td className="py-2 px-3 font-semibold text-gray-900 dark:text-white">{formatCurrency(t.amount)}</td>
+                    <td className="py-2 px-3 font-semibold text-gray-900 dark:text-white">{formatCurrency(t.amount, currency)}</td>
                     <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{t.agentName}</td>
                     <td className="py-2 px-3">
                       <TransactionRowActions
@@ -118,7 +123,9 @@ export default async function AdminTransactionsPage({
                           ...t,
                           date: new Date(t.date).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }),
                         }}
-                        deleteAction={deleteManualTransactionForm}
+                        deleteManualAction={deleteManualTransactionForm}
+                        deleteCollectionAction={deleteCollectionForm}
+                        deleteLoanPaymentAction={deleteLoanPaymentForm}
                       />
                     </td>
                   </tr>

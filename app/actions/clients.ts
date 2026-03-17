@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { getSecuritySettings } from "@/lib/system-settings";
 
 export interface CreateClientState {
   error?: string;
@@ -27,6 +28,10 @@ export async function createClient(
 
   if (!username || !email || !firstName || !lastName || !password) {
     return { error: "Username, email, first name, last name, and password are required." };
+  }
+  const { passwordMinLength } = await getSecuritySettings();
+  if (password.length < passwordMinLength) {
+    return { error: `Password must be at least ${passwordMinLength} characters long.` };
   }
   const agentId = agentIdRaw ? parseInt(agentIdRaw, 10) : NaN;
   if (!agentId || isNaN(agentId)) {

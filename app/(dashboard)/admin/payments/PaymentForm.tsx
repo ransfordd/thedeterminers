@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useActionState } from "react";
 import { recordAdminPayment, type AdminPaymentState } from "@/app/actions/admin-payments";
 import { formatCurrency } from "@/lib/dashboard";
+import { useCurrency } from "@/components/dashboard/CurrencyContext";
 
 const initialState: AdminPaymentState = {};
 
@@ -18,6 +19,7 @@ export function PaymentForm({
   activeLoans: LoanOption[];
 }) {
   const [state, formAction] = useActionState(recordAdminPayment, initialState);
+  const currency = useCurrency();
   const [paymentType, setPaymentType] = useState<string>("loan_payment");
   const [clientId, setClientId] = useState<string>("");
   const today = new Date().toISOString().slice(0, 10);
@@ -85,7 +87,7 @@ export function PaymentForm({
             <option value="">Choose loan...</option>
             {activeLoans.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.loanNumber} – {l.clientName} (Balance: {formatCurrency(l.currentBalance)})
+                {l.loanNumber} – {l.clientName} (Balance: {formatCurrency(l.currentBalance, currency)})
               </option>
             ))}
           </select>

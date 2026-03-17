@@ -319,8 +319,7 @@ export async function getTransactionsListFiltered(
         }
         return Array.from(byReceipt.values()).map((g) => {
           const r = g.first;
-          const agent = r.collectedBy ?? r.susuCycle?.client?.agent;
-          const agentName = agent ? `${agent.user.firstName} ${agent.user.lastName}` : "System Admin";
+          const agentName = r.collectedBy ? `${r.collectedBy.user.firstName} ${r.collectedBy.user.lastName}` : "System Admin";
           return {
             type: "Susu",
             ref: r.receiptNumber ?? "",
@@ -339,8 +338,7 @@ export async function getTransactionsListFiltered(
     ...susuGrouped,
     ...(Array.isArray(loan)
       ? loan.map((r) => {
-          const agent = r.collectedBy ?? r.loan?.client?.agent;
-          const agentName = agent ? `${agent.user.firstName} ${agent.user.lastName}` : "System Admin";
+          const agentName = r.collectedBy ? `${r.collectedBy.user.firstName} ${r.collectedBy.user.lastName}` : "System Admin";
           return {
             type: "Loan",
             ref: r.receiptNumber ?? "",
@@ -354,16 +352,25 @@ export async function getTransactionsListFiltered(
         })
       : []),
     ...(Array.isArray(manual)
-      ? manual.map((r) => ({
-          type: "Manual",
-          ref: r.reference ?? "",
-          date: r.createdAt as Date,
-          amount: toNum(r.amount),
-          clientName: `${r.client.user.firstName} ${r.client.user.lastName}`,
-          agentName: r.processedBy ? `${r.processedBy.firstName} ${r.processedBy.lastName}` : "System Admin",
-          id: r.id,
-          source: "manual" as const,
-        }))
+      ? manual.map((r) => {
+          const role = (r.processedBy as { role?: string } | null)?.role;
+          const agentName =
+            r.processedBy && (role === "business_admin" || role === "manager")
+              ? "System Admin"
+              : r.processedBy
+                ? `${r.processedBy.firstName} ${r.processedBy.lastName}`
+                : "System Admin";
+          return {
+            type: "Manual",
+            ref: r.reference ?? "",
+            date: r.createdAt as Date,
+            amount: toNum(r.amount),
+            clientName: `${r.client.user.firstName} ${r.client.user.lastName}`,
+            agentName,
+            id: r.id,
+            source: "manual" as const,
+          };
+        })
       : []),
   ];
   rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

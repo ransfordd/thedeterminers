@@ -11,6 +11,7 @@ import {
   formatCurrency,
 } from "@/lib/dashboard";
 import { getAgentsList } from "@/lib/dashboard/pages";
+import { getCurrency } from "@/lib/system-settings";
 import Link from "next/link";
 import {
   StatCard,
@@ -35,7 +36,7 @@ export default async function AdminDashboardPage() {
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const [metrics, recentTransactions, recentApplications, agentPerformance, recentActivities, agentsList] =
+  const [metrics, recentTransactions, recentApplications, agentPerformance, recentActivities, agentsList, currency] =
     await Promise.all([
       getAdminManagerMetrics(true),
       getRecentTransactions(20),
@@ -43,6 +44,7 @@ export default async function AdminDashboardPage() {
       getAgentPerformance({ fromDate: thirtyDaysAgo, toDate: today }),
       getRecentUserActivities(5).catch(() => []),
       getAgentsList(),
+      getCurrency(),
     ]);
   const agents = agentsList
     .filter((a) => a.status === "active")
@@ -75,7 +77,7 @@ export default async function AdminDashboardPage() {
     { key: "clientName", header: "Client" },
     { key: "ref", header: "Receipt", render: (r: { ref: string }) => <code className="text-xs">{r.ref || "—"}</code> },
     { key: "date", header: "Date", render: (r: { date: Date }) => new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) },
-    { key: "amount", header: "Amount", render: (r: { amount: number }) => <strong>{formatCurrency(r.amount)}</strong> },
+    { key: "amount", header: "Amount", render: (r: { amount: number }) => <strong>{formatCurrency(r.amount, currency)}</strong> },
   ];
 
   const agentColumns: DataTableColumn<AgentPerformanceRow>[] = [
@@ -83,7 +85,7 @@ export default async function AdminDashboardPage() {
     { key: "agentName", header: "Name" },
     { key: "clientCount", header: "Clients", render: (r) => r.clientCount.toLocaleString() },
     { key: "loansManaged", header: "Loans", render: (r) => r.loansManaged.toLocaleString() },
-    { key: "totalCollections", header: "Total Collections", render: (r) => formatCurrency(r.totalCollections) },
+    { key: "totalCollections", header: "Total Collections", render: (r) => formatCurrency(r.totalCollections, currency) },
   ];
 
   return (
@@ -126,8 +128,8 @@ export default async function AdminDashboardPage() {
           Financial Overview
         </SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard icon={<i className="fas fa-wallet text-green-600" />} value={formatCurrency(metrics.portfolioValue)} label="Portfolio Value" sublabel="Total active loan value" variant="success" />
-          <StatCard icon={<i className="fas fa-calendar-day text-blue-600" />} value={formatCurrency(metrics.collectionsToday)} label="Collections Today" sublabel="Susu + Loan payments" variant="primary" />
+          <StatCard icon={<i className="fas fa-wallet text-green-600" />} value={formatCurrency(metrics.portfolioValue, currency)} label="Portfolio Value" sublabel="Total active loan value" variant="success" />
+          <StatCard icon={<i className="fas fa-calendar-day text-blue-600" />} value={formatCurrency(metrics.collectionsToday, currency)} label="Collections Today" sublabel="Susu + Loan payments" variant="primary" />
           <StatCard icon={<i className="fas fa-exclamation-triangle text-red-600" />} value={metrics.overdueLoans.toLocaleString()} label="Overdue Loans" sublabel="Requires attention" variant="danger" />
           <StatCard
             icon={<i className="fas fa-percentage text-cyan-600" />}
@@ -144,10 +146,10 @@ export default async function AdminDashboardPage() {
           System Revenue
         </SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard icon={<i className="fas fa-arrow-down text-green-600" />} value={formatCurrency(metrics.totalDeposits)} label="Total Deposits" sublabel="All Susu collections" variant="success" />
-          <StatCard icon={<i className="fas fa-arrow-up text-amber-600" />} value={formatCurrency(metrics.totalWithdrawals)} label="Total Withdrawals" sublabel="Susu payouts" variant="warning" />
-          <StatCard icon={<i className="fas fa-chart-pie text-cyan-600" />} value={metrics.systemRevenue != null ? formatCurrency(metrics.systemRevenue) : "—"} label="System Revenue" sublabel="Interest + Commission" variant="info" />
-          <StatCard icon={<i className="fas fa-piggy-bank text-blue-600" />} value={formatCurrency(metrics.totalSavings)} label="Total Savings" sublabel="Across all clients" variant="primary" />
+          <StatCard icon={<i className="fas fa-arrow-down text-green-600" />} value={formatCurrency(metrics.totalDeposits, currency)} label="Total Deposits" sublabel="All Susu collections" variant="success" />
+          <StatCard icon={<i className="fas fa-arrow-up text-amber-600" />} value={formatCurrency(metrics.totalWithdrawals, currency)} label="Total Withdrawals" sublabel="Susu payouts" variant="warning" />
+          <StatCard icon={<i className="fas fa-chart-pie text-cyan-600" />} value={metrics.systemRevenue != null ? formatCurrency(metrics.systemRevenue, currency) : "—"} label="System Revenue" sublabel="Interest + Commission" variant="info" />
+          <StatCard icon={<i className="fas fa-piggy-bank text-blue-600" />} value={formatCurrency(metrics.totalSavings, currency)} label="Total Savings" sublabel="Across all clients" variant="primary" />
         </div>
       </section>
 
@@ -253,7 +255,7 @@ export default async function AdminDashboardPage() {
                     <div className="min-w-0">
                       <p className="font-medium text-gray-900 dark:text-white truncate">{app.clientName}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{app.productName}</p>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">{formatCurrency(app.requestedAmount)}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{formatCurrency(app.requestedAmount, currency)}</p>
                     </div>
                     <span className={`flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium ${
                       app.applicationStatus === "approved" ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200" :

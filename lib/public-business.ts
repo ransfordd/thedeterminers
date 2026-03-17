@@ -1,8 +1,23 @@
 /**
  * Business display info for public pages (top bar, footer, contact).
- * Uses env vars when set; falls back to PHP defaults.
+ * Uses env vars when set; falls back to static defaults.
+ * For DB-backed values (System Settings), use getBusinessInfoFromDb from lib/business-settings.
  */
-export const businessInfo = {
+export type BusinessInfo = {
+  name: string;
+  address: string;
+  email: string;
+  phone: string;
+  supportPhone: string;
+  supportEmail: string;
+  loansEmail: string;
+  infoEmail: string;
+  emergencyPhone: string;
+  officeHours: { weekdays: string; saturday: string; sunday: string };
+  headOfficeAddress: string;
+};
+
+export const businessInfo: BusinessInfo = {
   name:
     process.env.NEXT_PUBLIC_BUSINESS_NAME ?? "The Determiners",
   address:

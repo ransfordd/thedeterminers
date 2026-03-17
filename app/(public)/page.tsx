@@ -3,7 +3,7 @@ import Image from "next/image";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { businessInfo } from "@/lib/public-business";
+import { getBusinessInfoFromDb } from "@/lib/business-settings";
 import { HomeHeroSlider } from "@/components/public/HomeHeroSlider";
 import { WhyChooseGallery } from "@/components/public/WhyChooseGallery";
 import { PartnersCarousel } from "@/components/public/PartnersCarousel";
@@ -11,6 +11,7 @@ import { PartnersCarousel } from "@/components/public/PartnersCarousel";
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
   if (session?.user) redirect("/dashboard");
+  const businessInfo = await getBusinessInfoFromDb();
 
   return (
     <>

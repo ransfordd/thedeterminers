@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { businessInfo } from "@/lib/public-business";
+import type { BusinessInfo } from "@/lib/public-business";
 
-export function PageLoader() {
+export function PageLoader({ businessInfo }: { businessInfo: BusinessInfo }) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {

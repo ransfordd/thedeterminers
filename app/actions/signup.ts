@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Decimal } from "@prisma/client/runtime/library";
+import { getSecuritySettings } from "@/lib/system-settings";
 
 export type SignupState = { error?: string };
 
@@ -37,7 +38,8 @@ export async function signupClient(prev: SignupState, formData: FormData): Promi
   if (!firstName || !lastName) return { error: "First name and last name are required." };
   if (!username) return { error: "Username is required." };
   if (!email) return { error: "Email is required." };
-  if (!password || password.length < 8) return { error: "Password must be at least 8 characters." };
+  const { passwordMinLength } = await getSecuritySettings();
+  if (!password || password.length < passwordMinLength) return { error: `Password must be at least ${passwordMinLength} characters.` };
   if (!phone) return { error: "Phone number is required." };
   if (!nextOfKinName || !nextOfKinRelationship || !nextOfKinPhone || !nextOfKinAddress) {
     return { error: "Next of Kin information (name, relationship, phone, address) is required." };

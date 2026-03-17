@@ -1,6 +1,6 @@
-import { businessInfo } from "@/lib/public-business";
+import type { BusinessInfo } from "@/lib/public-business";
 
-export function TopBar() {
+export function TopBar({ businessInfo }: { businessInfo: BusinessInfo }) {
   return (
     <div className="fixed top-0 left-0 right-0 z-[1001] bg-transparent text-white text-sm py-2 px-4">
       <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-4">

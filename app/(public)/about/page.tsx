@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { businessInfo } from "@/lib/public-business";
+import { getBusinessInfoFromDb } from "@/lib/business-settings";
 import { AboutHeroSlider } from "@/components/public/AboutHeroSlider";
 
 export const metadata = {
@@ -92,10 +92,11 @@ const AWARDS = [
   { icon: "fa-certificate", title: "Innovation in Banking", org: "West Africa Banking Innovation Awards", year: "2022" },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const businessInfo = await getBusinessInfoFromDb();
   return (
     <div>
-      <AboutHeroSlider />
+      <AboutHeroSlider businessInfo={businessInfo} />
 
       {/* Our Story */}
       <section className="py-16 px-4 sm:px-6">

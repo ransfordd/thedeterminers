@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { businessInfo } from "@/lib/public-business";
+import type { BusinessInfo } from "@/lib/public-business";
 
 const SLIDES = [
   "/assets/images/About-side/about - first.jpg",
@@ -11,7 +11,7 @@ const SLIDES = [
   "/assets/images/About-side/about - fourth.jpg",
 ];
 
-export function AboutHeroSlider() {
+export function AboutHeroSlider({ businessInfo }: { businessInfo: BusinessInfo }) {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {

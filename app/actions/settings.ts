@@ -1,7 +1,7 @@
 "use server";
 
 import { getServerSession } from "next-auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -24,9 +24,16 @@ export async function updateSetting(
 
   if (!settingKey) return { error: "Setting key is required" };
 
-  await prisma.systemSetting.update({
+  await prisma.systemSetting.upsert({
     where: { settingKey },
-    data: { settingValue },
+    update: { settingValue },
+    create: {
+      settingKey,
+      settingValue,
+      settingType: "string",
+      category: "business",
+      description: settingKey.replace(/_/g, " "),
+    },
   });
 
   const adminManagerUsers = await prisma.user.findMany({
@@ -49,6 +56,9 @@ export async function updateSetting(
   revalidatePath("/manager");
   revalidatePath("/agent");
   revalidatePath("/client");
+  revalidatePath("/");
+  revalidateTag("business-info");
+  revalidateTag("system-settings");
   return { success: true };
 }
 

@@ -113,9 +113,14 @@ export async function createLoanApplication(
     },
   ];
 
-  if (application.client.agent?.userId) {
+  const clientWithAgent = await prisma.client.findUnique({
+    where: { id: application.clientId },
+    select: { agent: { select: { userId: true } } },
+  });
+  const agentUserId = clientWithAgent?.agent?.userId ?? application.client.agent?.userId ?? null;
+  if (agentUserId != null) {
     notifications.push({
-      userId: application.client.agent.userId,
+      userId: agentUserId,
       title: "Loan application submitted",
       message: `Loan application for GHS ${amountStr} has been submitted for client ${clientName}. Application #${appNumber}.`,
     });
@@ -155,4 +160,146 @@ export async function createLoanApplication(
   revalidatePath("/admin/applications");
   revalidatePath("/client/apply-loan");
   return { success: true, applicationNumber: appNumber };
+}
+
+export type ReviewApplicationState = { success?: boolean; error?: string };
+
+export async function approveLoanApplication(
+  _prev: ReviewApplicationState,
+  formData: FormData
+): Promise<ReviewApplicationState> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Not authenticated" };
+  const role = (session.user as { role?: string }).role;
+  if (role !== "business_admin" && role !== "manager") return { error: "Only admin or manager can approve applications." };
+
+  const applicationId = parseInt(String(formData.get("applicationId") ?? "0"), 10);
+  if (!applicationId) return { error: "Invalid application." };
+  const reviewNotes = (formData.get("reviewNotes") as string)?.trim() || null;
+  const approvedAmountRaw = (formData.get("approvedAmount") as string)?.trim();
+  const approvedTermRaw = (formData.get("approvedTermMonths") as string)?.trim();
+
+  const application = await prisma.loanApplication.findUnique({
+    where: { id: applicationId },
+    include: { client: { include: { user: true, agent: { include: { user: true } } } }, product: true },
+  });
+  if (!application) return { error: "Application not found." };
+  if (application.applicationStatus !== "pending" && application.applicationStatus !== "under_review")
+    return { error: "Application is no longer pending." };
+
+  const approvedAmount = approvedAmountRaw ? parseFloat(approvedAmountRaw) : Number(application.requestedAmount);
+  const approvedTermMonths = approvedTermRaw ? parseInt(approvedTermRaw, 10) : application.requestedTermMonths;
+  const reviewerId = parseInt((session.user as { id?: string }).id ?? "0", 10);
+  const now = new Date();
+
+  await prisma.loanApplication.update({
+    where: { id: applicationId },
+    data: {
+      applicationStatus: "approved",
+      reviewedById: reviewerId,
+      reviewDate: now,
+      reviewNotes: reviewNotes ?? undefined,
+      approvedAmount: new Decimal(approvedAmount),
+      approvedTermMonths,
+      approvalDate: now,
+    },
+  });
+
+  const amountStr = approvedAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const clientName = `${application.client.user.firstName ?? ""} ${application.client.user.lastName ?? ""}`.trim();
+  const appNumber = application.applicationNumber;
+
+  const clientWithAgentForApproved = await prisma.client.findUnique({
+    where: { id: application.clientId },
+    select: { agent: { select: { userId: true } } },
+  });
+  const agentUserIdApproved = clientWithAgentForApproved?.agent?.userId ?? application.client.agent?.userId ?? null;
+
+  const notifications: { userId: number; title: string; message: string }[] = [
+    { userId: application.client.userId, title: "Loan approved", message: `Your loan application #${appNumber} has been approved for GHS ${amountStr}. - The Determiners` },
+  ];
+  if (agentUserIdApproved != null)
+    notifications.push({ userId: agentUserIdApproved, title: "Loan approved", message: `Loan application #${appNumber} for ${clientName} has been approved for GHS ${amountStr}.` });
+  const admins = await prisma.user.findMany({
+    where: { role: { in: ["business_admin", "manager"] }, status: "active" },
+    select: { id: true },
+  });
+  admins.forEach((u) => notifications.push({ userId: u.id, title: "Loan approved", message: `Loan application #${appNumber} for ${clientName} approved for GHS ${amountStr}.` }));
+
+  await prisma.notification.createMany({
+    data: notifications.map((n) => ({ userId: n.userId, notificationType: "system_alert", title: n.title, message: n.message })),
+  });
+  await sendSmsToUserIds(prisma, notifications.map((n) => n.userId), `Loan approved: ${clientName}, GHS ${amountStr}. Ref ${appNumber}. - The Determiners`);
+
+  revalidatePath("/admin/applications");
+  revalidatePath(`/admin/applications/${applicationId}`);
+  revalidatePath("/agent/applications");
+  revalidatePath("/client/apply-loan");
+  return { success: true };
+}
+
+export async function rejectLoanApplication(
+  _prev: ReviewApplicationState,
+  formData: FormData
+): Promise<ReviewApplicationState> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Not authenticated" };
+  const role = (session.user as { role?: string }).role;
+  if (role !== "business_admin" && role !== "manager") return { error: "Only admin or manager can reject applications." };
+
+  const applicationId = parseInt(String(formData.get("applicationId") ?? "0"), 10);
+  if (!applicationId) return { error: "Invalid application." };
+  const reviewNotes = (formData.get("reviewNotes") as string)?.trim() || null;
+
+  const application = await prisma.loanApplication.findUnique({
+    where: { id: applicationId },
+    include: { client: { include: { user: true, agent: { include: { user: true } } } } },
+  });
+  if (!application) return { error: "Application not found." };
+  if (application.applicationStatus !== "pending" && application.applicationStatus !== "under_review")
+    return { error: "Application is no longer pending." };
+
+  const reviewerId = parseInt((session.user as { id?: string }).id ?? "0", 10);
+  const now = new Date();
+
+  await prisma.loanApplication.update({
+    where: { id: applicationId },
+    data: {
+      applicationStatus: "rejected",
+      reviewedById: reviewerId,
+      reviewDate: now,
+      reviewNotes: reviewNotes ?? undefined,
+    },
+  });
+
+  const clientName = `${application.client.user.firstName ?? ""} ${application.client.user.lastName ?? ""}`.trim();
+  const appNumber = application.applicationNumber;
+
+  const clientWithAgentForRejected = await prisma.client.findUnique({
+    where: { id: application.clientId },
+    select: { agent: { select: { userId: true } } },
+  });
+  const agentUserIdRejected = clientWithAgentForRejected?.agent?.userId ?? application.client.agent?.userId ?? null;
+
+  const notifications: { userId: number; title: string; message: string }[] = [
+    { userId: application.client.userId, title: "Loan application declined", message: `Your loan application #${appNumber} has been declined. ${reviewNotes ? reviewNotes : ""}`.trim() },
+  ];
+  if (agentUserIdRejected != null)
+    notifications.push({ userId: agentUserIdRejected, title: "Loan application declined", message: `Loan application #${appNumber} for ${clientName} has been declined.` });
+  const admins = await prisma.user.findMany({
+    where: { role: { in: ["business_admin", "manager"] }, status: "active" },
+    select: { id: true },
+  });
+  admins.forEach((u) => notifications.push({ userId: u.id, title: "Loan application declined", message: `Loan application #${appNumber} for ${clientName} was declined.` }));
+
+  await prisma.notification.createMany({
+    data: notifications.map((n) => ({ userId: n.userId, notificationType: "system_alert", title: n.title, message: n.message })),
+  });
+  await sendSmsToUserIds(prisma, notifications.map((n) => n.userId), `Loan application #${appNumber} for ${clientName} has been declined. - The Determiners`);
+
+  revalidatePath("/admin/applications");
+  revalidatePath(`/admin/applications/${applicationId}`);
+  revalidatePath("/agent/applications");
+  revalidatePath("/client/apply-loan");
+  return { success: true };
 }

@@ -1,14 +1,15 @@
 import { submitContact } from "@/lib/actions/contact";
 import { ContactForm } from "./ContactForm";
 import { ContactHeroSlider } from "@/components/public/ContactHeroSlider";
-import { businessInfo } from "@/lib/public-business";
+import { getBusinessInfoFromDb } from "@/lib/business-settings";
 
 export const metadata = {
   title: "Contact Us - Susu System",
   description: "Get in touch with us",
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const businessInfo = await getBusinessInfoFromDb();
   return (
     <div>
       <ContactHeroSlider />

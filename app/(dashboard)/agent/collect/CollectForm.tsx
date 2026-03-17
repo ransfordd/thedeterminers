@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useActionState } from "react";
 import { recordCollection, type CollectState } from "@/app/actions/collect";
 import { formatCurrency } from "@/lib/dashboard";
+import { useCurrency } from "@/components/dashboard/CurrencyContext";
 
 const initialState: CollectState = {};
 
@@ -64,7 +65,7 @@ export function CollectForm({
             <option value="">Select client...</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.clientCode} – {c.name} ({formatCurrency(c.dailyAmount)}/day)
+                {c.clientCode} – {c.name} ({formatCurrency(c.dailyAmount, currency)}/day)
               </option>
             ))}
           </select>

@@ -5,7 +5,15 @@ import { createProduct, type ProductState } from "@/app/actions/products";
 
 const initialState: ProductState = {};
 
-export function NewProductForm() {
+export function NewProductForm({
+  defaultInterestRate = 0,
+  defaultMinAmount = 0,
+  defaultMaxAmount = 0,
+}: {
+  defaultInterestRate?: number;
+  defaultMinAmount?: number;
+  defaultMaxAmount?: number;
+} = {}) {
   const [state, formAction] = useActionState(createProduct, initialState);
 
   return (
@@ -70,7 +78,7 @@ export function NewProductForm() {
             step="0.01"
             min="0"
             required
-            defaultValue="0"
+            defaultValue={String(defaultMinAmount)}
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>
@@ -85,7 +93,7 @@ export function NewProductForm() {
             step="0.01"
             min="0"
             required
-            defaultValue="0"
+            defaultValue={String(defaultMaxAmount)}
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>
@@ -101,7 +109,7 @@ export function NewProductForm() {
             type="number"
             step="0.01"
             min="0"
-            defaultValue="0"
+            defaultValue={String(defaultInterestRate)}
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>
