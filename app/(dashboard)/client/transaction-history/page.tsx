@@ -11,6 +11,7 @@ import {
 } from "@/lib/dashboard";
 import { PageHeader, ModernCard, StatCard } from "@/components/dashboard";
 import type { ClientFilteredTransactionRow } from "@/types/dashboard";
+import type { CurrencyDisplay } from "@/lib/system-settings";
 
 export default async function ClientTransactionHistoryPage({
   searchParams,
@@ -206,7 +207,7 @@ export default async function ClientTransactionHistoryPage({
           <div className="overflow-x-auto">
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
               {transactions.map((tx, idx) => (
-                <TransactionRow key={`${tx.type}-${tx.date}-${idx}`} row={tx} />
+                <TransactionRow key={`${tx.type}-${tx.date}-${idx}`} row={tx} display={display} />
               ))}
             </ul>
           </div>
@@ -216,7 +217,13 @@ export default async function ClientTransactionHistoryPage({
   );
 }
 
-function TransactionRow({ row }: { row: ClientFilteredTransactionRow }) {
+function TransactionRow({
+  row,
+  display,
+}: {
+  row: ClientFilteredTransactionRow;
+  display: CurrencyDisplay;
+}) {
   const isOutflow =
     row.type === "withdrawal" || row.type === "loan_payment";
   const amountClass = isOutflow

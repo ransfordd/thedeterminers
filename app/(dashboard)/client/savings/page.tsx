@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { getClientByUserId } from "@/lib/dashboard";
-import { getClientSavingsPage, formatCurrency } from "@/lib/dashboard";
+import { getClientSavingsPage, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard, StatCard, SectionTitle } from "@/components/dashboard";
 
 const PURPOSE_LABELS: Record<string, string> = {

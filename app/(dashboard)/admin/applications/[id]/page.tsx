@@ -34,7 +34,7 @@ export default async function AdminApplicationDetailPage({
         reviewer: true,
       },
     }),
-    getCurrency(),
+    getCurrencyDisplay(),
   ]);
   if (!application) notFound();
 

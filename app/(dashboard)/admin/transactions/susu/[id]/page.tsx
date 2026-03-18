@@ -51,7 +51,7 @@ export default async function AdminTransactionSusuViewPage({
       orderBy: { agentCode: "asc" },
       include: { user: true },
     }),
-    getCurrency(),
+    getCurrencyDisplay(),
   ]);
 
   if (!collection || collection.collectionStatus !== "collected") notFound();
@@ -73,11 +73,13 @@ export default async function AdminTransactionSusuViewPage({
     notes: collection.notes ?? "",
   };
 
-  const agentOptions = agents.map((a) => ({
-    id: a.id,
-    agentCode: a.agentCode,
-    displayName: `${a.user.firstName} ${a.user.lastName}`.trim(),
-  }));
+  const agentOptions = agents.map(
+    (a: (typeof agents)[number]) => ({
+      id: a.id,
+      agentCode: a.agentCode,
+      displayName: `${a.user.firstName} ${a.user.lastName}`.trim(),
+    })
+  );
 
   return (
     <>

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { getClientByUserId } from "@/lib/dashboard";
-import { getClientSusuSchedule, formatCurrency } from "@/lib/dashboard";
+import { getClientSusuSchedule, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
 
 export default async function ClientSusuPage() {
