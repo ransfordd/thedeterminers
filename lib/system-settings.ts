@@ -26,13 +26,16 @@ const SYSTEM_SETTING_KEYS = [
   "session_timeout",
 ] as const;
 
-async function fetchSystemSettingsFromDb(keys: string[]): Promise<Map<string, string>> {
+/** Plain object only — unstable_cache serializes cache entries; Map becomes a broken {}. */
+async function fetchSystemSettingsRecord(keys: string[]): Promise<Record<string, string>> {
   const { prisma } = await import("@/lib/db");
   const rows = await prisma.systemSetting.findMany({
     where: { settingKey: { in: keys } },
     select: { settingKey: true, settingValue: true },
   });
-  return new Map(rows.map((r) => [r.settingKey, r.settingValue]));
+  const out: Record<string, string> = {};
+  for (const r of rows) out[r.settingKey] = r.settingValue;
+  return out;
 }
 
 /**
@@ -42,11 +45,12 @@ async function fetchSystemSettingsFromDb(keys: string[]): Promise<Map<string, st
 export async function getSystemSettings(
   keys?: readonly string[] | string[]
 ): Promise<Map<string, string>> {
-  const full = await unstable_cache(
-    () => fetchSystemSettingsFromDb([...SYSTEM_SETTING_KEYS]),
+  const record = await unstable_cache(
+    () => fetchSystemSettingsRecord([...SYSTEM_SETTING_KEYS]),
     ["system-settings-full"],
     { revalidate: 60, tags: ["system-settings"] }
   )();
+  const full = new Map<string, string>(Object.entries(record ?? {}));
   if (!keys || keys.length === 0) return full;
   const filtered = new Map<string, string>();
   for (const k of keys) {

@@ -14,6 +14,59 @@ function toNum(d: Decimal | number | null | undefined): number {
   return typeof d === "number" ? d : Number(d);
 }
 
+function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Prior 30 local calendar days before todayStart; avg includes zero days. */
+async function computeAvgFullDayCollection(todayStart: Date): Promise<{
+  avgFullDay: number;
+  daysWithPositive: number;
+}> {
+  const windowStart = new Date(todayStart);
+  windowStart.setDate(windowStart.getDate() - 30);
+
+  const [susuRows, loanRows] = await Promise.all([
+    prisma.dailyCollection.findMany({
+      where: {
+        collectionStatus: "collected",
+        collectionDate: { gte: windowStart, lt: todayStart },
+      },
+      select: { collectionDate: true, collectedAmount: true },
+    }),
+    prisma.loanPayment.findMany({
+      where: {
+        paymentStatus: "paid",
+        paymentDate: { gte: windowStart, lt: todayStart },
+      },
+      select: { paymentDate: true, amountPaid: true },
+    }),
+  ]);
+
+  const byDay = new Map<string, number>();
+  for (const r of susuRows) {
+    const k = localDateKey(new Date(r.collectionDate));
+    byDay.set(k, (byDay.get(k) ?? 0) + toNum(r.collectedAmount));
+  }
+  for (const r of loanRows) {
+    const pd = r.paymentDate;
+    if (!pd) continue;
+    const k = localDateKey(new Date(pd));
+    byDay.set(k, (byDay.get(k) ?? 0) + toNum(r.amountPaid));
+  }
+
+  let sum = 0;
+  let daysWithPositive = 0;
+  const cursor = new Date(windowStart);
+  for (let i = 0; i < 30; i++) {
+    const t = byDay.get(localDateKey(cursor)) ?? 0;
+    sum += t;
+    if (t > 0) daysWithPositive++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return { avgFullDay: sum / 30, daysWithPositive };
+}
+
 export async function getAdminManagerMetrics(includeRevenue: boolean): Promise<AdminManagerMetrics> {
   const todayStart = getTodayStart();
   const monthStart = getMonthStart();
@@ -125,6 +178,8 @@ export async function getAdminManagerMetrics(includeRevenue: boolean): Promise<A
     toNum(collectionsTodaySusu._sum.collectedAmount) +
     toNum(collectionsTodayLoan._sum.amountPaid);
 
+  const { avgFullDay, daysWithPositive } = await computeAvgFullDayCollection(todayStart);
+
   const dailyCompletedCycles = await prisma.susuCycle.count({
     where: {
       status: "completed",
@@ -156,6 +211,9 @@ export async function getAdminManagerMetrics(includeRevenue: boolean): Promise<A
     cyclesCompletedThisMonth,
     dailyCompletedCycles,
     collectionRate,
+    avgFullDayCollection: avgFullDay,
+    collectionHistoryDaysWithData: daysWithPositive,
+    dashboardTodayStartMs: todayStart.getTime(),
     ...(includeRevenue ? { systemRevenue: systemRevenueResult } : {}),
   };
 }
@@ -387,11 +445,38 @@ export function getDashboardAlerts(metrics: AdminManagerMetrics): DashboardAlert
       message: `${metrics.pendingApplications} loan applications pending review`,
     });
   }
-  if (metrics.collectionsToday < 100 && metrics.totalClients > 0) {
-    alerts.push({
-      type: "warning",
-      message: "Low collection amount today",
-    });
+
+  const minHistoryDays = 5;
+  const avg = metrics.avgFullDayCollection;
+  if (
+    metrics.collectionHistoryDaysWithData >= minHistoryDays &&
+    avg > 0 &&
+    metrics.totalClients > 0
+  ) {
+    const todayStart = new Date(metrics.dashboardTodayStartMs);
+    const elapsedHours = Math.min(
+      24,
+      Math.max(0, (Date.now() - todayStart.getTime()) / (1000 * 60 * 60))
+    );
+    if (elapsedHours >= 3) {
+      const expectedSoFar = avg * (elapsedHours / 24);
+      if (expectedSoFar >= 1) {
+        if (metrics.collectionsToday < expectedSoFar * 0.8) {
+          alerts.push({
+            type: "warning",
+            message:
+              "Collections today are below typical for this time of day (vs your recent daily average).",
+          });
+        } else if (metrics.collectionsToday > expectedSoFar * 1.2) {
+          alerts.push({
+            type: "success",
+            message:
+              "Collections today are above typical for this time of day (vs your recent daily average).",
+          });
+        }
+      }
+    }
   }
+
   return alerts;
 }

@@ -46,6 +46,12 @@ export interface AdminManagerMetrics {
   dailyCompletedCycles: number;
   collectionRate: number;
   systemRevenue?: number; // Admin only
+  /** Mean daily Susu+loan total over the prior 30 calendar days (excl. today). */
+  avgFullDayCollection: number;
+  /** Days in that window with any collection (> 0). */
+  collectionHistoryDaysWithData: number;
+  /** Local midnight start of "today" (ms) for pro-rated alerts. */
+  dashboardTodayStartMs: number;
 }
 
 export interface AssignedClientRow {

@@ -57,14 +57,26 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.usernameOrEmail || !credentials?.password) return null;
         const input = String(credentials.usernameOrEmail).trim();
         const identifier = input.toLowerCase();
-        const { maxLoginAttempts, lockoutDurationMinutes } = await getSecuritySettings();
 
-        const now = new Date();
-        const attempt = await prisma.loginAttempt.findUnique({
-          where: { identifier },
-        });
-        if (attempt?.lockedUntil && attempt.lockedUntil > now) {
-          return null;
+        let maxLoginAttempts = 5;
+        let lockoutDurationMinutes = 30;
+        let attempt: { attemptCount: number; lockedUntil: Date | null } | null = null;
+        let lockoutDbAvailable = false;
+        try {
+          const sec = await getSecuritySettings();
+          maxLoginAttempts = Math.max(3, Math.min(50, sec.maxLoginAttempts || 5));
+          lockoutDurationMinutes = Math.max(1, Math.min(1440, sec.lockoutDurationMinutes || 30));
+          attempt = await prisma.loginAttempt.findUnique({
+            where: { identifier },
+            select: { attemptCount: true, lockedUntil: true },
+          });
+          lockoutDbAvailable = true;
+          const now = new Date();
+          if (attempt?.lockedUntil && attempt.lockedUntil > now) {
+            return null;
+          }
+        } catch {
+          /* login_attempt table missing or DB error — continue without lockout */
         }
 
         const phoneConditions = [{ phone: input }];
@@ -73,33 +85,50 @@ export const authOptions: NextAuthOptions = {
         const user = await prisma.user.findFirst({
           where: {
             status: "active",
-            OR: [{ email: input }, { username: input }, ...phoneConditions],
+            OR: [
+              { email: { equals: input, mode: "insensitive" } },
+              { username: { equals: input, mode: "insensitive" } },
+              ...phoneConditions,
+            ],
           },
         });
 
         const recordFailedAttempt = async () => {
-          const newCount = (attempt?.attemptCount ?? 0) + 1;
-          const lockedUntil =
-            newCount >= maxLoginAttempts
-              ? new Date(now.getTime() + lockoutDurationMinutes * 60 * 1000)
-              : null;
-          await prisma.loginAttempt.upsert({
-            where: { identifier },
-            update: { attemptCount: newCount, lockedUntil },
-            create: { identifier, attemptCount: newCount, lockedUntil },
-          });
+          if (!lockoutDbAvailable) return;
+          try {
+            const now = new Date();
+            const newCount = (attempt?.attemptCount ?? 0) + 1;
+            const lockedUntil =
+              newCount >= maxLoginAttempts
+                ? new Date(now.getTime() + lockoutDurationMinutes * 60 * 1000)
+                : null;
+            await prisma.loginAttempt.upsert({
+              where: { identifier },
+              update: { attemptCount: newCount, lockedUntil },
+              create: { identifier, attemptCount: newCount, lockedUntil },
+            });
+          } catch {
+            /* ignore */
+          }
         };
 
         if (!user) {
           await recordFailedAttempt();
           return null;
         }
-        const valid = await compare(credentials.password, user.passwordHash);
+        let valid = false;
+        try {
+          valid = await compare(credentials.password, user.passwordHash);
+        } catch {
+          return null;
+        }
         if (!valid) {
           await recordFailedAttempt();
           return null;
         }
-        await prisma.loginAttempt.deleteMany({ where: { identifier } }).catch(() => {});
+        if (lockoutDbAvailable) {
+          await prisma.loginAttempt.deleteMany({ where: { identifier } }).catch(() => {});
+        }
         return {
           id: String(user.id),
           email: user.email,
