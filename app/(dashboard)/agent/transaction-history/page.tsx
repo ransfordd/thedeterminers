@@ -1,12 +1,13 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { getAgentByUserId } from "@/lib/dashboard";
 import { PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ModernCard, DataTable, StatCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PrintButton } from "./PrintButton";
 
 function toNum(d: unknown): number {
@@ -71,7 +72,10 @@ export default async function AgentTransactionHistoryPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "agent") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const userId = (session.user as { id?: string }).id;
   const agent = await getAgentByUserId(userId ? parseInt(String(userId), 10) : 0);
@@ -284,7 +288,7 @@ export default async function AgentTransactionHistoryPage({
     {
       key: "amount",
       header: "Amount",
-      render: (r: TransactionHistoryRow) => <strong>{formatCurrency(r.amount)}</strong>,
+      render: (r: TransactionHistoryRow) => <strong>{formatCurrencyFromGhs(r.amount, display)}</strong>,
     },
     {
       key: "client",
@@ -440,7 +444,7 @@ export default async function AgentTransactionHistoryPage({
         />
         <StatCard
           icon={<i className="fas fa-coins" />}
-          value={formatCurrency(totalAmount)}
+          value={formatCurrencyFromGhs(totalAmount, display)}
           label="Total Amount"
           sublabel="All transactions"
           variant="success"

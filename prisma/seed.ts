@@ -1,6 +1,7 @@
 /**
  * Seed: system settings + default users for all roles.
- * Run: npx prisma db seed
+ * Run from next-app:  cd next-app && npx prisma db seed
+ * Or from repo root:  npm run db:seed
  *
  * Default login (override with env: SEED_*_EMAIL, SEED_*_PASSWORD):
  * - Admin:   admin@example.com   / admin123

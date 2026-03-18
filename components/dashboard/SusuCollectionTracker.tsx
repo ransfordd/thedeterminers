@@ -1,7 +1,7 @@
 "use client";
 
-import { formatCurrency } from "@/lib/dashboard";
-import { useCurrency } from "@/components/dashboard/CurrencyContext";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
+import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
 
 type TrackerCollection = {
   dayNumber: number;
@@ -22,8 +22,6 @@ type SusuCollectionTrackerProps = {
   activeCycle: ActiveCycle | null;
   collections: TrackerCollection[] | null;
   depositType: string;
-  /** Fallback when cycle length cannot be derived from dates (e.g. default 30). */
-  defaultCycleDays?: number;
 };
 
 function getCycleLengthFromDates(startDate: string, endDate: string): number {
@@ -33,13 +31,14 @@ function getCycleLengthFromDates(startDate: string, endDate: string): number {
   return Math.max(1, diff + 1);
 }
 
+const FALLBACK_CYCLE_DAYS = 31;
+
 export function SusuCollectionTracker({
   activeCycle,
   collections,
   depositType,
-  defaultCycleDays = 31,
 }: SusuCollectionTrackerProps) {
-  const currency = useCurrency();
+  const display = useCurrencyDisplay();
   if (!activeCycle) {
     return (
       <section>
@@ -58,7 +57,8 @@ export function SusuCollectionTracker({
     );
   }
 
-  const cycleLength = getCycleLengthFromDates(activeCycle.startDate, activeCycle.endDate) || defaultCycleDays;
+  const cycleLength =
+    getCycleLengthFromDates(activeCycle.startDate, activeCycle.endDate) || FALLBACK_CYCLE_DAYS;
   const collectionByDay: Record<number, TrackerCollection> = {};
   (collections ?? []).forEach((c) => {
     if (c.dayNumber >= 1 && c.dayNumber <= cycleLength) {
@@ -86,14 +86,14 @@ export function SusuCollectionTracker({
               <p className="mb-1 text-sm">
                 <span className="font-medium">Daily amount:</span>{" "}
                 {depositType === "flexible_amount"
-                  ? formatCurrency(activeCycle.averageDailyAmount ?? 0, currency)
-                  : formatCurrency(activeCycle.dailyAmount, currency)}
+                  ? formatCurrencyFromGhs(activeCycle.averageDailyAmount ?? 0, display)
+                  : formatCurrencyFromGhs(activeCycle.dailyAmount, display)}
               </p>
               <p className="mb-1 text-sm">
                 <span className="font-medium">Collections made:</span> {collectionsMade} / {cycleLength}
               </p>
               <p className="mb-0 text-sm">
-                <span className="font-medium">Total collected:</span> {formatCurrency(totalCollected, currency)}
+                <span className="font-medium">Total collected:</span> {formatCurrencyFromGhs(totalCollected, display)}
               </p>
             </div>
             <div>
@@ -137,7 +137,7 @@ export function SusuCollectionTracker({
                         })}
                       </small>
                       <small className="text-xs font-medium text-gray-800 dark:text-gray-200">
-                        {formatCurrency(col.collectedAmount, currency)}
+                        {formatCurrencyFromGhs(col.collectedAmount, display)}
                       </small>
                     </>
                   ) : (

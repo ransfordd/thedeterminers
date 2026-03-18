@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { Suspense } from "react";
 import { authOptions } from "@/lib/auth";
 import { getCommissionReportData } from "@/lib/dashboard/reports";
 import { getAgentsList } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard, StatCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { CommissionReportFilters } from "./CommissionReportFilters";
 
 export default async function AdminCommissionReportsPage({
@@ -15,7 +16,10 @@ export default async function AdminCommissionReportsPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "business_admin") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const params = await searchParams;
   const today = new Date();
@@ -54,7 +58,7 @@ export default async function AdminCommissionReportsPage({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
         <StatCard
           icon={<i className="fas fa-coins text-amber-600" />}
-          value={formatCurrency(data.totalCommission)}
+          value={formatCurrencyFromGhs(data.totalCommission, display)}
           label="Total Commissions"
           variant="warning"
         />
@@ -90,7 +94,7 @@ export default async function AdminCommissionReportsPage({
                     <td className="py-2 px-3 font-medium">{r.agentName}</td>
                     <td className="py-2 px-3">{r.agentCode}</td>
                     <td className="py-2 px-3">{r.cyclesCompleted}</td>
-                    <td className="py-2 px-3">{formatCurrency(r.totalCommission)}</td>
+                    <td className="py-2 px-3">{formatCurrencyFromGhs(r.totalCommission, display)}</td>
                   </tr>
                 ))}
               </tbody>

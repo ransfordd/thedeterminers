@@ -2,8 +2,8 @@
 
 import { useActionState } from "react";
 import { createLoanApplication, type ApplicationState } from "@/app/actions/applications";
-import { formatCurrency } from "@/lib/dashboard";
-import { useCurrency } from "@/components/dashboard/CurrencyContext";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
+import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
 
 const initialState: ApplicationState = {};
 
@@ -20,7 +20,7 @@ export function NewApplicationForm({
   initialClientId?: number;
 }) {
   const [state, formAction] = useActionState(createLoanApplication, initialState);
-  const currency = useCurrency();
+  const display = useCurrencyDisplay();
 
   return (
     <form action={formAction} className="space-y-4 max-w-2xl">
@@ -68,7 +68,7 @@ export function NewApplicationForm({
             <option value="">Select product...</option>
             {products.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.productName} ({p.productCode}) – {formatCurrency(p.minAmount, currency)}–{formatCurrency(p.maxAmount, currency)}, {p.minTermMonths}–{p.maxTermMonths} months
+                {p.productName} ({p.productCode}) – {formatCurrencyFromGhs(p.minAmount, display)}–{formatCurrencyFromGhs(p.maxAmount, display)}, {p.minTermMonths}–{p.maxTermMonths} months
               </option>
             ))}
           </select>

@@ -1,9 +1,10 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions, resolveRole } from "@/lib/auth";
 import { getAgentsList } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard, DataTable, AlertBanner } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { AgentActions } from "./AgentActions";
 
 type AgentRow = {
@@ -31,6 +32,8 @@ export default async function AdminAgentsPage({
   const role = await resolveRole(session);
   if (role !== "business_admin" && role !== "manager") redirect("/dashboard");
 
+
+  const display = await getCurrencyDisplay();
   const params = await searchParams;
   const agents = await getAgentsList();
   const columns = [
@@ -40,7 +43,7 @@ export default async function AdminAgentsPage({
     { key: "phone", header: "Phone", render: (r: AgentRow) => r.phone ?? "—" },
     { key: "commissionRate", header: "Commission Rate", render: (r: AgentRow) => `${r.commissionRate}%` },
     { key: "clientCount", header: "Clients", render: (r: AgentRow) => r.clientCount.toLocaleString() },
-    { key: "totalCollections", header: "Total Collected", render: (r: AgentRow) => formatCurrency(r.totalCollections) },
+    { key: "totalCollections", header: "Total Collected", render: (r: AgentRow) => formatCurrencyFromGhs(r.totalCollections, display) },
     { key: "cyclesCompleted", header: "Cycles Completed", render: (r: AgentRow) => r.cyclesCompleted.toLocaleString() },
     { key: "status", header: "Status", render: (r: AgentRow) => <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200" : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}`}>{r.status}</span> },
     { key: "actions", header: "Actions", render: (r: AgentRow) => <AgentActions row={r} isAdmin={true} /> },

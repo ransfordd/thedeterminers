@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions, resolveRole } from "@/lib/auth";
 import { getClientsList, getClientDetails, getClientSusuSummary } from "@/lib/dashboard";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { UserTransactionFilters } from "./UserTransactionFilters";
 
 export default async function AdminUserTransactionsPage({
@@ -17,6 +18,8 @@ export default async function AdminUserTransactionsPage({
   const role = await resolveRole(session);
   const allowed = role === "business_admin" || role === "manager" || role === "";
   if (!allowed) redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
   const effectiveRole = role || "manager";
 
   const params = await searchParams;
@@ -245,7 +248,7 @@ export default async function AdminUserTransactionsPage({
                     <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">{new Date(r.date).toLocaleDateString("en-GB")}</td>
                       <td className="py-2 pr-4">{r.type}</td>
-                      <td className="py-2 pr-4 font-medium">{formatCurrency(r.amount)}</td>
+                      <td className="py-2 pr-4 font-medium">{formatCurrencyFromGhs(r.amount, display)}</td>
                       <td className="py-2 pr-4">{r.reference || "—"}</td>
                       <td className="py-2 text-gray-500 dark:text-gray-400">{r.description || "—"}</td>
                     </tr>

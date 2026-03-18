@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
-import { getClientByUserId, getClientSavingsPage, formatCurrency } from "@/lib/dashboard";
+import { getClientByUserId, getClientSavingsPage, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader } from "@/components/dashboard";
 import { PayCycleForm } from "./PayCycleForm";
 
@@ -29,6 +30,8 @@ export default async function PayCycleFromSavingsPage({
   const maxAmount = Math.min(balance, activeCycle.remainingAmount);
   if (maxAmount <= 0) redirect("/client/savings?error=no_remaining");
 
+
+  const display = await getCurrencyDisplay();
   return (
     <>
       <PageHeader
@@ -40,7 +43,7 @@ export default async function PayCycleFromSavingsPage({
       />
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 max-w-md">
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Remaining: {formatCurrency(activeCycle.remainingAmount)} ({activeCycle.remainingDays} days). Savings balance: {formatCurrency(balance)}.
+          Remaining: {formatCurrencyFromGhs(activeCycle.remainingAmount, display)} ({activeCycle.remainingDays} days). Savings balance: {formatCurrencyFromGhs(balance, display)}.
         </p>
         <PayCycleForm cycleId={cycleId} maxAmount={maxAmount} />
       </div>

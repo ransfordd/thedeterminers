@@ -3,8 +3,8 @@ import { redirect, notFound } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
-import { getCurrency } from "@/lib/system-settings";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { ApplicationReviewActions } from "./ApplicationReviewActions";
 
 function toNum(d: unknown): number {
@@ -25,7 +25,7 @@ export default async function AdminApplicationDetailPage({
   const id = parseInt((await params).id, 10);
   if (isNaN(id)) notFound();
 
-  const [application, currency] = await Promise.all([
+  const [application, display] = await Promise.all([
     prisma.loanApplication.findUnique({
       where: { id },
       include: {
@@ -64,7 +64,7 @@ export default async function AdminApplicationDetailPage({
             <dt className="text-gray-500 dark:text-gray-400">Product</dt>
             <dd>{application.product.productName}</dd>
             <dt className="text-gray-500 dark:text-gray-400">Requested amount</dt>
-            <dd>{formatCurrency(toNum(application.requestedAmount), currency)}</dd>
+            <dd>{formatCurrencyFromGhs(toNum(application.requestedAmount), display)}</dd>
             <dt className="text-gray-500 dark:text-gray-400">Requested term</dt>
             <dd>{application.requestedTermMonths} months</dd>
             <dt className="text-gray-500 dark:text-gray-400">Purpose</dt>
@@ -106,7 +106,7 @@ export default async function AdminApplicationDetailPage({
                 {application.applicationStatus === "approved" && application.approvedAmount != null && (
                   <>
                     <dt className="text-gray-500 dark:text-gray-400">Approved amount</dt>
-                    <dd>{formatCurrency(toNum(application.approvedAmount), currency)}</dd>
+                    <dd>{formatCurrencyFromGhs(toNum(application.approvedAmount), display)}</dd>
                     <dt className="text-gray-500 dark:text-gray-400">Approved term</dt>
                     <dd>{application.approvedTermMonths} months</dd>
                   </>

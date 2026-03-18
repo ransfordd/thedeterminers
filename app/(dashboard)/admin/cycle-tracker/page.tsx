@@ -1,9 +1,10 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 
 function toNum(d: unknown): number {
   if (d == null) return 0;
@@ -13,7 +14,10 @@ function toNum(d: unknown): number {
 export default async function AdminCycleTrackerPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "business_admin") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const cycles = await prisma.susuCycle.findMany({
     where: { status: "active" },
@@ -37,7 +41,7 @@ export default async function AdminCycleTrackerPage() {
     { key: "cycleNumber", header: "Cycle #" },
     { key: "startDate", header: "Start", render: (r: { startDate: Date }) => new Date(r.startDate).toLocaleDateString("en-GB") },
     { key: "endDate", header: "End", render: (r: { endDate: Date }) => new Date(r.endDate).toLocaleDateString("en-GB") },
-    { key: "dailyAmount", header: "Daily", render: (r: { dailyAmount: number }) => formatCurrency(r.dailyAmount) },
+    { key: "dailyAmount", header: "Daily", render: (r: { dailyAmount: number }) => formatCurrencyFromGhs(r.dailyAmount, display) },
     { key: "status", header: "Status", render: (r: { status: string }) => <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40">{r.status}</span> },
   ];
 

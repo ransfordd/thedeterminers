@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { getAgentByUserId } from "@/lib/dashboard";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 
 function toNum(d: unknown): number {
   if (d == null) return 0;
@@ -14,7 +15,10 @@ function toNum(d: unknown): number {
 export default async function AgentApplicationsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "agent") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const userId = (session.user as { id?: string }).id;
   const agent = await getAgentByUserId(userId ? parseInt(String(userId), 10) : 0);
@@ -47,7 +51,7 @@ export default async function AgentApplicationsPage() {
     { key: "applicationNumber", header: "Application #", render: (r: { applicationNumber: string }) => <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{r.applicationNumber}</code> },
     { key: "clientName", header: "Client" },
     { key: "productName", header: "Product" },
-    { key: "requestedAmount", header: "Amount", render: (r: { requestedAmount: number }) => formatCurrency(r.requestedAmount) },
+    { key: "requestedAmount", header: "Amount", render: (r: { requestedAmount: number }) => formatCurrencyFromGhs(r.requestedAmount, display) },
     { key: "applicationStatus", header: "Status", render: (r: { applicationStatus: string }) => <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.applicationStatus === "approved" ? "bg-green-100 text-green-800" : r.applicationStatus === "pending" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>{r.applicationStatus}</span> },
     { key: "appliedDate", header: "Applied", render: (r: { appliedDate: Date }) => new Date(r.appliedDate).toLocaleDateString("en-GB") },
   ];

@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { getClientDashboardData, formatCurrency } from "@/lib/dashboard";
-import { getCurrency, getDefaultSusuCycleDays } from "@/lib/system-settings";
+import { getClientDashboardData, formatCurrencyFromGhs } from "@/lib/dashboard";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import {
   StatCard,
   WelcomeBanner,
@@ -19,11 +19,7 @@ export default async function ClientDashboardPage() {
 
   const userId = (session.user as { id?: string }).id;
   const numericId = userId ? parseInt(String(userId), 10) : 0;
-  const [data, currency, defaultCycleDays] = await Promise.all([
-    getClientDashboardData(numericId),
-    getCurrency(),
-    getDefaultSusuCycleDays(),
-  ]);
+  const [data, display] = await Promise.all([getClientDashboardData(numericId), getCurrencyDisplay()]);
 
   if (!data) {
     return (
@@ -46,9 +42,9 @@ export default async function ClientDashboardPage() {
     : "Daily Amount";
   const dailyValue = activeCycle
     ? depositType === "flexible_amount" && activeCycle.averageDailyAmount != null
-      ? formatCurrency(activeCycle.averageDailyAmount, currency)
-      : formatCurrency(activeCycle.dailyAmount, currency)
-    : `${currency} 0.00`;
+      ? formatCurrencyFromGhs(activeCycle.averageDailyAmount, display)
+      : formatCurrencyFromGhs(activeCycle.dailyAmount, display)
+    : formatCurrencyFromGhs(0, display);
   const currentCycleTotal = cycleSummary.totalCollectedInCycle;
   const totalDaysInCycle = activeCycle
     ? Math.round((new Date(activeCycle.endDate).getTime() - new Date(activeCycle.startDate).getTime()) / (24 * 60 * 60 * 1000)) + 1
@@ -59,7 +55,7 @@ export default async function ClientDashboardPage() {
 
   const activityColumns = [
     { key: "title", header: "Type", render: (r: { title: string }) => r.title },
-    { key: "amount", header: "Amount", render: (r: { amount: number }) => formatCurrency(r.amount, currency) },
+    { key: "amount", header: "Amount", render: (r: { amount: number }) => formatCurrencyFromGhs(r.amount, display) },
     { key: "date", header: "Date", render: (r: { date: Date }) => new Date(r.date).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) },
     { key: "description", header: "Description" },
   ];
@@ -77,17 +73,17 @@ export default async function ClientDashboardPage() {
           Statistics
         </SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <StatCard icon={<i className="fas fa-piggy-bank text-blue-600" />} value={formatCurrency(cycleSummary.totalCollectedAllTimeNet ?? 0, currency)} label="Total Collected" sublabel={`${cycleSummary.daysCollectedAllTime ?? 0} collections`} variant="primary" />
+          <StatCard icon={<i className="fas fa-piggy-bank text-blue-600" />} value={formatCurrencyFromGhs(cycleSummary.totalCollectedAllTimeNet ?? 0, display)} label="Total Collected" sublabel={`${cycleSummary.daysCollectedAllTime ?? 0} collections`} variant="primary" />
           <StatCard icon={<i className="fas fa-check-circle text-green-600" />} value={(cycleSummary.completedCycles ?? 0).toLocaleString()} label="Cycles Completed" sublabel="Click to view details" variant="success" href="/client/cycles-completed" />
-          <StatCard icon={<i className="fas fa-money-bill-wave text-amber-600" />} value={formatCurrency(totalWithdrawals ?? 0, currency)} label="Total Withdrawals" sublabel="All time withdrawals" variant="warning" />
-          <StatCard icon={<i className="fas fa-piggy-bank text-green-600" />} value={formatCurrency(savingsBalance ?? 0, currency)} label="Savings Balance" sublabel="Click to manage savings" variant="success" href="/client/savings" />
+          <StatCard icon={<i className="fas fa-money-bill-wave text-amber-600" />} value={formatCurrencyFromGhs(totalWithdrawals ?? 0, display)} label="Total Withdrawals" sublabel="All time withdrawals" variant="warning" />
+          <StatCard icon={<i className="fas fa-piggy-bank text-green-600" />} value={formatCurrencyFromGhs(savingsBalance ?? 0, display)} label="Savings Balance" sublabel="Click to manage savings" variant="success" href="/client/savings" />
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 flex flex-col">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-400">
                 <i className="fas fa-coins" />
               </div>
               <div className="min-w-0">
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrency(currentCycleTotal ?? 0, currency)}</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrencyFromGhs(currentCycleTotal ?? 0, display)}</p>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{depositType === "flexible_amount" ? "Total Collected" : "Current Cycle Total"}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{currentCycleSublabel}</p>
               </div>
@@ -95,7 +91,7 @@ export default async function ClientDashboardPage() {
             {emergencyWithdrawalEligible.eligible && emergencyWithdrawalEligible.cycleId && (
               <>
                 <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">
-                  Available for emergency withdrawal: {formatCurrency(emergencyWithdrawalEligible.availableEmergencyAmount, currency)} (commission {formatCurrency(emergencyWithdrawalEligible.emergencyCommissionAmount, currency)} deducted).
+                  Available for emergency withdrawal: {formatCurrencyFromGhs(emergencyWithdrawalEligible.availableEmergencyAmount, display)} (commission {formatCurrencyFromGhs(emergencyWithdrawalEligible.emergencyCommissionAmount, display)} deducted).
                 </p>
                 <a href={`/client/emergency-withdrawal?cycle_id=${emergencyWithdrawalEligible.cycleId}`} className="mt-3 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
                   <i className="fas fa-exclamation-triangle" /> Emergency Withdrawal
@@ -130,7 +126,7 @@ export default async function ClientDashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Current Balance</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrency(Number(activeLoan.currentBalance), currency)}</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrencyFromGhs(Number(activeLoan.currentBalance), display)}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Next Payment</p>
@@ -140,7 +136,7 @@ export default async function ClientDashboardPage() {
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Monthly Payment</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrency(Number(activeLoan.monthlyPayment), currency)}</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrencyFromGhs(Number(activeLoan.monthlyPayment), display)}</p>
               </div>
             </div>
             <a href="/client/loans" className="inline-block mt-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
@@ -154,7 +150,6 @@ export default async function ClientDashboardPage() {
         activeCycle={activeCycle ? { id: activeCycle.id, startDate: activeCycle.startDate.toISOString(), endDate: activeCycle.endDate.toISOString(), dailyAmount: activeCycle.dailyAmount, isFlexible: activeCycle.isFlexible, averageDailyAmount: activeCycle.averageDailyAmount } : null}
         collections={susuTrackerCollections?.map((c) => ({ dayNumber: c.dayNumber, collectedAmount: Number(c.collectedAmount), collectionDate: c.collectionDate.toISOString() })) ?? null}
         depositType={depositType}
-        defaultCycleDays={defaultCycleDays}
       />
 
       <section>

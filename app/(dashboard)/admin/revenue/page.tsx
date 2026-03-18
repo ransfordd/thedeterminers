@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { Suspense } from "react";
 import { authOptions } from "@/lib/auth";
 import { getRevenueDashboardData } from "@/lib/dashboard/reports";
 import { PageHeader, ModernCard, StatCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { RevenueFilters } from "./RevenueFilters";
 
 export default async function AdminRevenuePage({
@@ -14,7 +15,10 @@ export default async function AdminRevenuePage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "business_admin") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const params = await searchParams;
   const today = new Date();
@@ -52,35 +56,35 @@ export default async function AdminRevenuePage({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           icon={<i className="fas fa-dollar-sign text-indigo-600" />}
-          value={formatCurrency(data.totalRevenue)}
+          value={formatCurrencyFromGhs(data.totalRevenue, display)}
           label="Total Revenue"
           sublabel={`${data.totalTransactions} transactions`}
           variant="primary"
         />
         <StatCard
           icon={<i className="fas fa-coins text-green-600" />}
-          value={formatCurrency(data.susu.totalAmount)}
+          value={formatCurrencyFromGhs(data.susu.totalAmount, display)}
           label="Susu Collections"
           sublabel={`${data.susu.transactionCount} collections`}
           variant="success"
         />
         <StatCard
           icon={<i className="fas fa-hand-holding-usd text-cyan-600" />}
-          value={formatCurrency(data.loan.totalAmount)}
+          value={formatCurrencyFromGhs(data.loan.totalAmount, display)}
           label="Loan Payments"
           sublabel={`${data.loan.transactionCount} payments`}
           variant="info"
         />
         <StatCard
           icon={<i className="fas fa-plus-circle text-amber-600" />}
-          value={formatCurrency(data.manualDeposits.totalAmount)}
+          value={formatCurrencyFromGhs(data.manualDeposits.totalAmount, display)}
           label="Manual Deposits"
           sublabel={`${data.manualDeposits.transactionCount} deposits`}
           variant="warning"
         />
         <StatCard
           icon={<i className="fas fa-minus-circle text-blue-600" />}
-          value={formatCurrency(data.manualWithdrawals.totalAmount)}
+          value={formatCurrencyFromGhs(data.manualWithdrawals.totalAmount, display)}
           label="Manual Withdrawals"
           sublabel={`${data.manualWithdrawals.transactionCount} withdrawals`}
           variant="primary"

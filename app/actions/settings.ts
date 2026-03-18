@@ -24,6 +24,50 @@ export async function updateSetting(
 
   if (!settingKey) return { error: "Setting key is required" };
 
+  const upperCurrency = (v: string) => v.trim().toUpperCase();
+  const parseRate = (raw: string | undefined) => {
+    const r = parseFloat((raw ?? "").trim());
+    return Number.isFinite(r) ? r : NaN;
+  };
+
+  const rateKeyForCurrency = (c: string) =>
+    c === "USD" ? "currency_rate_usd_per_ghs" : c === "EUR" ? "currency_rate_eur_per_ghs" : null;
+
+  if (settingKey === "currency") {
+    const next = upperCurrency(settingValue || "GHS");
+    const rk = rateKeyForCurrency(next);
+    if (rk) {
+      const rateRow = await prisma.systemSetting.findUnique({
+        where: { settingKey: rk },
+        select: { settingValue: true },
+      });
+      let r = parseRate(rateRow?.settingValue);
+      if (!Number.isFinite(r) || r <= 0 || r === 1) {
+        const legacy = await prisma.systemSetting.findUnique({
+          where: { settingKey: "currency_rate_from_ghs" },
+          select: { settingValue: true },
+        });
+        r = parseRate(legacy?.settingValue);
+      }
+      if (!Number.isFinite(r) || r <= 0 || r === 1) {
+        const label = next === "USD" ? "USD per 1 GHS" : "EUR per 1 GHS";
+        return {
+          error: `Set and save ${label} (a positive number other than 1, e.g. ${next === "USD" ? "0.0916" : "0.055"}) before switching display currency to ${next}.`,
+        };
+      }
+    }
+  }
+
+  if (settingKey === "currency_rate_usd_per_ghs" || settingKey === "currency_rate_eur_per_ghs") {
+    const r = parseRate(settingValue);
+    if (!Number.isFinite(r) || r <= 0 || r === 1) {
+      return {
+        error:
+          "Enter a positive rate other than 1 (how many USD or EUR equal one GHS for display).",
+      };
+    }
+  }
+
   await prisma.systemSetting.upsert({
     where: { settingKey },
     update: { settingValue },

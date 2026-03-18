@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth";
 import { redirect, notFound } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { getAgentsList } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 
 export default async function ManagerAgentDetailPage({
   params,
@@ -13,7 +14,10 @@ export default async function ManagerAgentDetailPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "manager") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const { id } = await params;
   const agentId = parseInt(id, 10);
@@ -68,7 +72,7 @@ export default async function ManagerAgentDetailPage({
           </div>
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Collected</p>
-            <p className="font-medium text-green-700 dark:text-green-300">{formatCurrency(agent.totalCollections)}</p>
+            <p className="font-medium text-green-700 dark:text-green-300">{formatCurrencyFromGhs(agent.totalCollections, display)}</p>
           </div>
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Cycles Completed</p>

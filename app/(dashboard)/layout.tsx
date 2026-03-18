@@ -2,10 +2,11 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions, resolveRole } from "@/lib/auth";
 import { getRecentNotifications } from "@/lib/dashboard";
-import { getCurrency } from "@/lib/system-settings";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { ImpersonationBanner } from "@/components/dashboard/ImpersonationBanner";
+import { CurrencyDisplayWarningBanner } from "@/components/dashboard/CurrencyDisplayWarningBanner";
 import { CurrencyProvider } from "@/components/dashboard/CurrencyContext";
 import { prisma } from "@/lib/db";
 
@@ -21,7 +22,7 @@ export default async function DashboardLayout({
   const userIdRaw = (session.user as { id?: string }).id;
   const userId = userIdRaw ? parseInt(String(userIdRaw), 10) : 0;
 
-  const [currentUser, systemBranding, currency] = await Promise.all([
+  const [currentUser, systemBranding, currencyDisplay] = await Promise.all([
     userId > 0
       ? prisma.user.findUnique({
           where: { id: userId },
@@ -32,7 +33,7 @@ export default async function DashboardLayout({
       where: { settingKey: { in: ["app_name", "app_logo"] } },
       select: { settingKey: true, settingValue: true },
     }),
-    getCurrency(),
+    getCurrencyDisplay(),
   ]);
   const profileImage = (currentUser?.profileImage ?? session.user.image ?? null) ?? null;
   const displayName = (currentUser
@@ -56,9 +57,14 @@ export default async function DashboardLayout({
       : [];
 
   return (
-    <CurrencyProvider currency={currency}>
+    <CurrencyProvider value={currencyDisplay}>
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
         <ImpersonationBanner role={role} />
+        <CurrencyDisplayWarningBanner
+          code={currencyDisplay.code}
+          rateFromGhs={currencyDisplay.rateFromGhs}
+          canManageSettings={role === "business_admin" || role === "manager"}
+        />
         <DashboardHeader
         user={{
           name: displayName,

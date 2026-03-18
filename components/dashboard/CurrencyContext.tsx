@@ -1,23 +1,27 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { CurrencyDisplayOpts } from "@/lib/dashboard/utils";
 
-const CurrencyContext = createContext<string>("GHS");
+const defaultDisplay: CurrencyDisplayOpts = { code: "GHS", rateFromGhs: 1 };
+
+const CurrencyContext = createContext<CurrencyDisplayOpts>(defaultDisplay);
 
 export function CurrencyProvider({
-  currency,
+  value,
   children,
 }: {
-  currency: string;
+  value: CurrencyDisplayOpts;
   children: React.ReactNode;
 }) {
   return (
-    <CurrencyContext.Provider value={currency || "GHS"}>
+    <CurrencyContext.Provider value={value?.code ? value : defaultDisplay}>
       {children}
     </CurrencyContext.Provider>
   );
 }
 
-export function useCurrency(): string {
+/** Display currency + GHS→display rate (for formatCurrencyFromGhs). */
+export function useCurrencyDisplay(): CurrencyDisplayOpts {
   return useContext(CurrencyContext);
 }

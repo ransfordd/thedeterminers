@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import {
   getAdminManagerMetrics,
@@ -7,7 +8,7 @@ import {
   getRecentApplications,
   getAgentPerformance,
   getDashboardAlerts,
-  formatCurrency,
+  formatCurrencyFromGhs,
 } from "@/lib/dashboard";
 import {
   StatCard,
@@ -22,7 +23,10 @@ import { SystemAnalyticsCard } from "./SystemAnalyticsCard";
 export default async function ManagerDashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "manager") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const name = session.user.name ?? "Manager";
   const [metrics, recentTransactions, recentApplications, agentPerformance] = await Promise.all([
@@ -51,7 +55,7 @@ export default async function ManagerDashboardPage() {
     { key: "clientName", header: "Client" },
     { key: "ref", header: "Receipt", render: (r: { ref: string }) => <code className="text-xs">{r.ref || "—"}</code> },
     { key: "date", header: "Date", render: (r: { date: Date }) => new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) },
-    { key: "amount", header: "Amount", render: (r: { amount: number }) => <strong>{formatCurrency(r.amount)}</strong> },
+    { key: "amount", header: "Amount", render: (r: { amount: number }) => <strong>{formatCurrencyFromGhs(r.amount, display)}</strong> },
   ];
 
   const agentColumns = [
@@ -59,7 +63,7 @@ export default async function ManagerDashboardPage() {
     { key: "agentName", header: "Name" },
     { key: "clientCount", header: "Clients", render: (r: { clientCount: number }) => r.clientCount.toLocaleString() },
     { key: "loansManaged", header: "Loans", render: (r: { loansManaged: number }) => r.loansManaged.toLocaleString() },
-    { key: "totalCollections", header: "Total Collections", render: (r: { totalCollections: number }) => formatCurrency(r.totalCollections) },
+    { key: "totalCollections", header: "Total Collections", render: (r: { totalCollections: number }) => formatCurrencyFromGhs(r.totalCollections, display) },
   ];
 
   return (
@@ -94,10 +98,10 @@ export default async function ManagerDashboardPage() {
           Financial Overview
         </SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <StatCard icon={<i className="fas fa-wallet text-green-600" />} value={formatCurrency(metrics.portfolioValue)} label="Portfolio Value" sublabel="Total active loan value" variant="success" />
-          <StatCard icon={<i className="fas fa-calendar-day text-blue-600" />} value={formatCurrency(metrics.collectionsToday)} label="Collections Today" sublabel="Susu + Loan payments" variant="primary" />
+          <StatCard icon={<i className="fas fa-wallet text-green-600" />} value={formatCurrencyFromGhs(metrics.portfolioValue, display)} label="Portfolio Value" sublabel="Total active loan value" variant="success" />
+          <StatCard icon={<i className="fas fa-calendar-day text-blue-600" />} value={formatCurrencyFromGhs(metrics.collectionsToday, display)} label="Collections Today" sublabel="Susu + Loan payments" variant="primary" />
           <StatCard icon={<i className="fas fa-exclamation-triangle text-red-600" />} value={metrics.overdueLoans.toLocaleString()} label="Overdue Loans" sublabel="Requires attention" variant="danger" />
-          <StatCard icon={<i className="fas fa-piggy-bank text-blue-600" />} value={formatCurrency(metrics.totalSavings)} label="Total Savings" sublabel="Across all clients" variant="primary" />
+          <StatCard icon={<i className="fas fa-piggy-bank text-blue-600" />} value={formatCurrencyFromGhs(metrics.totalSavings, display)} label="Total Savings" sublabel="Across all clients" variant="primary" />
           <StatCard icon={<i className="fas fa-percentage text-cyan-600" />} value={`${metrics.collectionRate.toFixed(1)}%`} label="Collection Rate" sublabel="Today's efficiency" variant="info" />
         </div>
       </section>
@@ -107,7 +111,7 @@ export default async function ManagerDashboardPage() {
           Withdrawals
         </SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard icon={<i className="fas fa-arrow-up text-amber-600" />} value={formatCurrency(metrics.totalWithdrawals)} label="Total Withdrawals" sublabel="Susu payouts + manual" variant="warning" />
+          <StatCard icon={<i className="fas fa-arrow-up text-amber-600" />} value={formatCurrencyFromGhs(metrics.totalWithdrawals, display)} label="Total Withdrawals" sublabel="Susu payouts + manual" variant="warning" />
           <StatCard icon={<i className="fas fa-exchange-alt text-amber-600" />} value={metrics.pendingPayoutTransfers.toLocaleString()} label="Pending Transfers" sublabel="Click to manage" variant="warning" href="/manager/pending-transfers" />
           <StatCard icon={<i className="fas fa-exclamation-triangle text-red-600" />} value={metrics.pendingEmergencyRequests.toLocaleString()} label="Emergency Withdrawals" sublabel="Click to manage" variant="danger" href="/admin/emergency-withdrawals" />
           <StatCard icon={<i className="fas fa-check-double text-blue-600" />} value={metrics.dailyCompletedCycles.toLocaleString()} label="Completed Today" sublabel="Cycles completed today" variant="primary" />
@@ -190,7 +194,7 @@ export default async function ManagerDashboardPage() {
                     <div className="min-w-0">
                       <p className="font-medium text-gray-900 dark:text-white truncate">{app.clientName}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{app.productName}</p>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">{formatCurrency(app.requestedAmount)}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{formatCurrencyFromGhs(app.requestedAmount, display)}</p>
                     </div>
                     <span className={`flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium ${
                       app.applicationStatus === "approved" ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200" :

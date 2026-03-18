@@ -1,16 +1,20 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { getClientsList } from "@/lib/dashboard";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { PaymentForm } from "./PaymentForm";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 
 export default async function AdminPaymentsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "business_admin") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
@@ -130,7 +134,7 @@ export default async function AdminPaymentsPage() {
                         {p.type} · {p.reference || "—"} · {new Date(p.date).toLocaleDateString("en-GB")}
                       </p>
                     </div>
-                    <span className="font-semibold text-green-700 dark:text-green-300">{formatCurrency(p.amount)}</span>
+                    <span className="font-semibold text-green-700 dark:text-green-300">{formatCurrencyFromGhs(p.amount, display)}</span>
                   </div>
                 </li>
               ))}

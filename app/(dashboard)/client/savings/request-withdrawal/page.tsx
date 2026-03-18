@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
-import { getClientByUserId, getClientSavingsPage, formatCurrency } from "@/lib/dashboard";
+import { getClientByUserId, getClientSavingsPage, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader } from "@/components/dashboard";
 import { RequestWithdrawalForm } from "./RequestWithdrawalForm";
 
@@ -17,6 +18,8 @@ export default async function RequestWithdrawalPage() {
   const { balance } = await getClientSavingsPage(client.id);
   if (balance <= 0) redirect("/client/savings?error=no_balance");
 
+
+  const display = await getCurrencyDisplay();
   return (
     <>
       <PageHeader
@@ -28,7 +31,7 @@ export default async function RequestWithdrawalPage() {
       />
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 max-w-md">
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Available balance: {formatCurrency(balance)}. Your request will be reviewed by staff.
+          Available balance: {formatCurrencyFromGhs(balance, display)}. Your request will be reviewed by staff.
         </p>
         <RequestWithdrawalForm maxAmount={balance} />
       </div>

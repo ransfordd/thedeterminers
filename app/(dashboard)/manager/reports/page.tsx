@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { Suspense } from "react";
 import { authOptions } from "@/lib/auth";
 import { getManagerReportData } from "@/lib/dashboard/reports";
 import { PageHeader, ModernCard, StatCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { ManagerReportFilters } from "./ManagerReportFilters";
 
 export default async function ManagerReportsPage({
@@ -14,7 +15,10 @@ export default async function ManagerReportsPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "manager") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const params = await searchParams;
   const today = new Date();
@@ -50,28 +54,28 @@ export default async function ManagerReportsPage({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           icon={<i className="fas fa-arrow-down text-green-600" />}
-          value={formatCurrency(financialSummary.totalCollections)}
+          value={formatCurrencyFromGhs(financialSummary.totalCollections, display)}
           label="Total Collections"
           sublabel="Susu collections"
           variant="success"
         />
         <StatCard
           icon={<i className="fas fa-money-bill-wave text-blue-600" />}
-          value={formatCurrency(financialSummary.totalLoanPayments)}
+          value={formatCurrencyFromGhs(financialSummary.totalLoanPayments, display)}
           label="Loan Payments"
           sublabel="Repayment collections"
           variant="primary"
         />
         <StatCard
           icon={<i className="fas fa-arrow-up text-amber-600" />}
-          value={formatCurrency(financialSummary.totalPayouts + financialSummary.totalManualWithdrawals)}
+          value={formatCurrencyFromGhs(financialSummary.totalPayouts + financialSummary.totalManualWithdrawals, display)}
           label="Total Withdrawals"
           sublabel="Payouts + Manual"
           variant="warning"
         />
         <StatCard
           icon={<i className="fas fa-calculator text-cyan-600" />}
-          value={formatCurrency(financialSummary.netPosition)}
+          value={formatCurrencyFromGhs(financialSummary.netPosition, display)}
           label="Net Position"
           sublabel="In - Out"
           variant="info"
@@ -113,7 +117,7 @@ export default async function ManagerReportsPage({
                       {stat.label} Cycles
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
-                      {formatCurrency(stat.totalCollected)} collected · Avg {formatCurrency(stat.avgCollection)} · {stat.clientCount} clients
+                      {formatCurrencyFromGhs(stat.totalCollected, display)} collected · Avg {formatCurrencyFromGhs(stat.avgCollection, display)} · {stat.clientCount} clients
                     </p>
                   </div>
                 </div>
@@ -162,7 +166,7 @@ export default async function ManagerReportsPage({
                       </span>
                     </td>
                     <td className="py-2 px-3 font-semibold text-green-700 dark:text-green-300">
-                      {formatCurrency(agent.totalCollections)}
+                      {formatCurrencyFromGhs(agent.totalCollections, display)}
                     </td>
                     <td className="py-2 px-3">
                       <div className="flex flex-col gap-1">
@@ -171,7 +175,7 @@ export default async function ManagerReportsPage({
                             {agent.fixedClients} Fixed
                           </span>
                           <span className="text-xs text-gray-600 dark:text-gray-400">
-                            {formatCurrency(agent.fixedCollections)}
+                            {formatCurrencyFromGhs(agent.fixedCollections, display)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -179,7 +183,7 @@ export default async function ManagerReportsPage({
                             {agent.flexibleClients} Flexible
                           </span>
                           <span className="text-xs text-gray-600 dark:text-gray-400">
-                            {formatCurrency(agent.flexibleCollections)}
+                            {formatCurrencyFromGhs(agent.flexibleCollections, display)}
                           </span>
                         </div>
                       </div>

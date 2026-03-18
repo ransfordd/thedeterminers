@@ -4,8 +4,8 @@ import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
-import { getCurrency } from "@/lib/system-settings";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { EditCollectionForm } from "./EditCollectionForm";
 
 function toNum(d: unknown): number {
@@ -38,7 +38,7 @@ export default async function AdminTransactionSusuViewPage({
   const id = parseInt((await params).id, 10);
   if (isNaN(id)) notFound();
 
-  const [collection, agents, currency] = await Promise.all([
+  const [collection, agents, display] = await Promise.all([
     prisma.dailyCollection.findUnique({
       where: { id },
       include: {
@@ -101,7 +101,7 @@ export default async function AdminTransactionSusuViewPage({
           <dt className="font-medium text-gray-500 dark:text-gray-400">Recorded by</dt>
           <dd>{agentName}</dd>
           <dt className="font-medium text-gray-500 dark:text-gray-400">Amount (GHS)</dt>
-          <dd className="font-semibold">{formatCurrency(amount, currency)}</dd>
+          <dd className="font-semibold">{formatCurrencyFromGhs(amount, display)}</dd>
         </dl>
 
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Edit collection</h3>

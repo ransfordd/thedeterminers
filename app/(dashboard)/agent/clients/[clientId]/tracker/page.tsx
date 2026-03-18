@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth";
 import { redirect, notFound } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
-import { getAgentDashboardData, formatCurrency } from "@/lib/dashboard";
+import { getAgentDashboardData, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { prisma } from "@/lib/db";
 
@@ -19,7 +20,10 @@ export default async function AgentClientTrackerPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "agent") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const { clientId: clientIdParam } = await params;
   const clientId = parseInt(clientIdParam, 10);
@@ -88,11 +92,11 @@ export default async function AgentClientTrackerPage({
                   </div>
                   <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-center">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Total Collected</p>
-                    <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(totalCollected)}</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrencyFromGhs(totalCollected, display)}</p>
                   </div>
                   <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-center">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Daily Amount</p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(dailyAmount)}</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrencyFromGhs(dailyAmount, display)}</p>
                   </div>
                   <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-center">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Remaining</p>
@@ -125,7 +129,7 @@ export default async function AgentClientTrackerPage({
                           <tr key={c.id} className="border-b border-gray-100 dark:border-gray-800">
                             <td className="py-2 pr-2">{c.dayNumber}</td>
                             <td className="py-2 pr-2">{c.collectionDate.toLocaleDateString("en-GB")}</td>
-                            <td className="py-2 pr-2">{formatCurrency(toNum(c.collectedAmount))}</td>
+                            <td className="py-2 pr-2">{formatCurrencyFromGhs(toNum(c.collectedAmount), display)}</td>
                             <td className="py-2">{c.collectedBy?.agentCode ?? "—"}</td>
                           </tr>
                         ))}
@@ -153,7 +157,7 @@ export default async function AgentClientTrackerPage({
               <p><span className="text-gray-500 dark:text-gray-400">Code:</span> {client.clientCode}</p>
               {client.user.phone && <p><span className="text-gray-500 dark:text-gray-400">Phone:</span> {client.user.phone}</p>}
               {client.user.email && <p><span className="text-gray-500 dark:text-gray-400">Email:</span> {client.user.email}</p>}
-              <p><span className="text-gray-500 dark:text-gray-400">Daily Amount:</span> {formatCurrency(dailyAmount)}</p>
+              <p><span className="text-gray-500 dark:text-gray-400">Daily Amount:</span> {formatCurrencyFromGhs(dailyAmount, display)}</p>
             </div>
           </ModernCard>
         </div>

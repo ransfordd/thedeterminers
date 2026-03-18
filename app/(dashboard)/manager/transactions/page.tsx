@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { Suspense } from "react";
 import { authOptions } from "@/lib/auth";
 import { getManagerTransactionsFiltered } from "@/lib/dashboard/pages";
 import { getClientsList } from "@/lib/dashboard";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { ManagerTransactionFilters } from "./ManagerTransactionFilters";
 
 export default async function ManagerTransactionsPage({
@@ -15,7 +16,10 @@ export default async function ManagerTransactionsPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "manager") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const params = await searchParams;
   const typeFilter = (params.type === "susu" || params.type === "loan" || params.type === "savings"
@@ -70,7 +74,7 @@ export default async function ManagerTransactionsPage({
     },
     { key: "clientName", header: "Client" },
     { key: "agentName", header: "Agent" },
-    { key: "amount", header: "Amount", render: (r: { amount: number }) => <strong>{formatCurrency(r.amount)}</strong> },
+    { key: "amount", header: "Amount", render: (r: { amount: number }) => <strong>{formatCurrencyFromGhs(r.amount, display)}</strong> },
   ];
 
   return (

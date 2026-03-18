@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import type { ClientCycleWithDetails } from "@/types/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
-import { useCurrency } from "@/components/dashboard/CurrencyContext";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
+import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
 
 interface CycleItemRowProps {
   cycle: ClientCycleWithDetails;
@@ -12,7 +12,7 @@ interface CycleItemRowProps {
 
 export function CycleItemRow({ cycle, index }: CycleItemRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const currency = useCurrency();
+  const display = useCurrencyDisplay();
   const percentage =
     cycle.daysRequired > 0
       ? Math.min(100, (cycle.daysCollected / cycle.daysRequired) * 100)
@@ -74,7 +74,7 @@ export function CycleItemRow({ cycle, index }: CycleItemRowProps) {
 
         <div className="text-center">
           <p className="font-semibold text-gray-900 dark:text-white">
-            {formatCurrency(cycle.cycleTotalCollected, currency)}
+            {formatCurrencyFromGhs(cycle.cycleTotalCollected, display)}
           </p>
           <small className="text-gray-500 dark:text-gray-400">
             Total Collected
@@ -130,7 +130,7 @@ export function CycleItemRow({ cycle, index }: CycleItemRowProps) {
                         })}
                       </td>
                       <td className="py-2 pr-4 font-medium text-gray-900 dark:text-gray-200">
-                        {formatCurrency(dc.collectedAmount, currency)}
+                        {formatCurrencyFromGhs(dc.collectedAmount, display)}
                       </td>
                       <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">
                         {dc.agentName}

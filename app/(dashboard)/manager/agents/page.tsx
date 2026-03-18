@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { getAgentsList } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard, DataTable, StatCard, AlertBanner } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { ManagerAgentActions } from "./ManagerAgentActions";
 
 type AgentRow = {
@@ -31,6 +32,7 @@ export default async function ManagerAgentsPage({
   if (!session?.user) redirect("/login");
   if ((session.user as { role?: string }).role !== "manager") redirect("/dashboard");
 
+  const display = await getCurrencyDisplay();
   const params = await searchParams;
   const agents = await getAgentsList();
   const totalAgents = agents.length;
@@ -45,7 +47,7 @@ export default async function ManagerAgentsPage({
     { key: "phone", header: "Phone", render: (r: AgentRow) => r.phone ?? "—" },
     { key: "commissionRate", header: "Commission Rate", render: (r: AgentRow) => `${r.commissionRate}%` },
     { key: "clientCount", header: "Clients", render: (r: AgentRow) => r.clientCount.toLocaleString() },
-    { key: "totalCollections", header: "Total Collected", render: (r: AgentRow) => formatCurrency(r.totalCollections) },
+    { key: "totalCollections", header: "Total Collected", render: (r: AgentRow) => formatCurrencyFromGhs(r.totalCollections, display) },
     { key: "cyclesCompleted", header: "Cycles Completed", render: (r: AgentRow) => r.cyclesCompleted.toLocaleString() },
     { key: "status", header: "Status", render: (r: AgentRow) => <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200" : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}`}>{r.status}</span> },
     { key: "hireDate", header: "Hire Date", render: (r: AgentRow) => new Date(r.hireDate).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric" }) },
@@ -68,7 +70,7 @@ export default async function ManagerAgentsPage({
         <StatCard icon={<i className="fas fa-user-tie" />} value={totalAgents} label="Total Agents" variant="primary" />
         <StatCard icon={<i className="fas fa-check-circle" />} value={activeAgents} label="Active Agents" variant="success" />
         <StatCard icon={<i className="fas fa-users" />} value={totalClients} label="Total Clients" variant="warning" />
-        <StatCard icon={<i className="fas fa-money-bill-wave" />} value={formatCurrency(totalCollections)} label="Total Collections" variant="info" />
+        <StatCard icon={<i className="fas fa-money-bill-wave" />} value={formatCurrencyFromGhs(totalCollections, display)} label="Total Collections" variant="info" />
       </section>
       <ModernCard
         title="All Agents"

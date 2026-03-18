@@ -1,12 +1,13 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import {
   getClientByUserId,
   getClientTransactionSummary,
   getClientFilteredTransactions,
-  formatCurrency,
+  formatCurrencyFromGhs,
 } from "@/lib/dashboard";
 import { PageHeader, ModernCard, StatCard } from "@/components/dashboard";
 import type { ClientFilteredTransactionRow } from "@/types/dashboard";
@@ -23,7 +24,10 @@ export default async function ClientTransactionHistoryPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "client") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const userId = (session.user as { id?: string }).id;
   const numericId = userId ? parseInt(String(userId), 10) : 0;
@@ -71,31 +75,31 @@ export default async function ClientTransactionHistoryPage({
         />
         <StatCard
           icon={<i className="fas fa-piggy-bank text-green-600" />}
-          value={formatCurrency(summary.totalCollections)}
+          value={formatCurrencyFromGhs(summary.totalCollections, display)}
           label="Total Collections"
           variant="success"
         />
         <StatCard
           icon={<i className="fas fa-file-invoice-dollar text-amber-600" />}
-          value={formatCurrency(summary.totalLoanPayments)}
+          value={formatCurrencyFromGhs(summary.totalLoanPayments, display)}
           label="Loan Payments"
           variant="warning"
         />
         <StatCard
           icon={<i className="fas fa-money-bill-wave text-gray-600" />}
-          value={formatCurrency(summary.totalWithdrawals)}
+          value={formatCurrencyFromGhs(summary.totalWithdrawals, display)}
           label="Withdrawals"
           variant="secondary"
         />
         <StatCard
           icon={<i className="fas fa-calendar-check text-cyan-600" />}
-          value={formatCurrency(summary.currentCycleCollections)}
+          value={formatCurrencyFromGhs(summary.currentCycleCollections, display)}
           label="Current Cycle Collections"
           variant="info"
         />
         <StatCard
           icon={<i className="fas fa-piggy-bank text-green-600" />}
-          value={formatCurrency(summary.savingsBalance)}
+          value={formatCurrencyFromGhs(summary.savingsBalance, display)}
           label="Savings Account"
           variant="success"
         />
@@ -261,7 +265,7 @@ function TransactionRow({ row }: { row: ClientFilteredTransactionRow }) {
       </div>
       <div className={`font-semibold ${amountClass}`}>
         {prefix}
-        {formatCurrency(row.amount)}
+        {formatCurrencyFromGhs(row.amount, display)}
       </div>
     </li>
   );

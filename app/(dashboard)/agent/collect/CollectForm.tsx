@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useActionState } from "react";
 import { recordCollection, type CollectState } from "@/app/actions/collect";
-import { formatCurrency } from "@/lib/dashboard";
-import { useCurrency } from "@/components/dashboard/CurrencyContext";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
+import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
 
 const initialState: CollectState = {};
 
@@ -27,7 +27,7 @@ export function CollectForm({
   initialAccountType?: string;
   initialSusuAmount?: number;
 }) {
-  const currency = useCurrency();
+  const display = useCurrencyDisplay();
   const [state, formAction] = useActionState(recordCollection, initialState);
   const [accountType, setAccountType] = useState<string>(initialAccountType === "loan" || initialAccountType === "both" ? initialAccountType : "susu");
   const [clientId, setClientId] = useState<string>(initialClientId != null ? String(initialClientId) : "");
@@ -50,6 +50,12 @@ export function CollectForm({
         </div>
       )}
 
+      {display.code !== "GHS" && (
+        <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+          Amounts you enter are in <strong>GHS</strong> (Ghana Cedis). The UI shows converted values for reference only.
+        </p>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label htmlFor="clientId" className={labelClass}>
@@ -66,7 +72,7 @@ export function CollectForm({
             <option value="">Select client...</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.clientCode} – {c.name} ({formatCurrency(c.dailyAmount, currency)}/day)
+                {c.clientCode} – {c.name} ({formatCurrencyFromGhs(c.dailyAmount, display)}/day)
               </option>
             ))}
           </select>
@@ -106,7 +112,9 @@ export function CollectForm({
       {(accountType === "susu" || accountType === "both") && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="susuAmount" className={labelClass}>Susu amount</label>
+            <label htmlFor="susuAmount" className={labelClass}>
+              Susu amount (GHS) <span className="text-gray-500 font-normal text-xs">— enter cedis</span>
+            </label>
             <input
               id="susuAmount"
               name="susuAmount"
@@ -134,7 +142,9 @@ export function CollectForm({
       {(accountType === "loan" || accountType === "both") && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="loanAmount" className={labelClass}>Loan payment amount</label>
+            <label htmlFor="loanAmount" className={labelClass}>
+              Loan payment amount (GHS) <span className="text-gray-500 font-normal text-xs">— enter cedis</span>
+            </label>
             <input
               id="loanAmount"
               name="loanAmount"

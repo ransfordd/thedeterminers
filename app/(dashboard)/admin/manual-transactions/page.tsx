@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { getClientsList } from "@/lib/dashboard";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { ManualTransactionForm } from "./ManualTransactionForm";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 
 const MANUAL_TYPES = ["deposit", "withdrawal", "savings_withdrawal", "emergency_withdrawal"] as const;
 
@@ -19,6 +20,8 @@ export default async function AdminManualTransactionsPage({
   const role = (session.user as { role?: string }).role;
   if (role !== "business_admin" && role !== "manager") redirect("/dashboard");
 
+
+  const display = await getCurrencyDisplay();
   const params = await searchParams;
   const typeFilter = params.type && MANUAL_TYPES.includes(params.type as (typeof MANUAL_TYPES)[number])
     ? (params.type as (typeof MANUAL_TYPES)[number])
@@ -87,7 +90,7 @@ export default async function AdminManualTransactionsPage({
                         #{t.reference} · {t.transactionType} · {new Date(t.createdAt).toLocaleString("en-GB")}
                       </p>
                     </div>
-                    <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(Number(t.amount))}</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{formatCurrencyFromGhs(Number(t.amount), display)}</span>
                   </div>
                 </li>
               ))}

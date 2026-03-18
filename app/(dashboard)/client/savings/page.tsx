@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { getClientByUserId } from "@/lib/dashboard";
 import { getClientSavingsPage, formatCurrency } from "@/lib/dashboard";
@@ -91,9 +92,10 @@ function QuickActionCard({
 export default async function ClientSavingsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  if ((session.user as { role?: string }).role !== "client")
-    redirect("/dashboard");
 
+  if ((session.user as { role?: string }).role !== "client") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
   const userId = (session.user as { id?: string }).id;
   const client = await getClientByUserId(
     userId ? parseInt(String(userId), 10) : 0
@@ -131,10 +133,10 @@ export default async function ClientSavingsPage() {
       ? "Current cycle is already complete"
       : balance <= 0
         ? "No savings balance available"
-        : `Use up to ${formatCurrency(usablePayCycleAmount)} from savings to complete current cycle`;
+        : `Use up to ${formatCurrencyFromGhs(usablePayCycleAmount, display)} from savings to complete current cycle`;
   const payCycleSublabel = activeCycle
     ? balance > 0 && balance < activeCycle.remainingAmount
-      ? `Remaining: ${activeCycle.remainingDays} days (cycle need: ${formatCurrency(activeCycle.remainingAmount)})`
+      ? `Remaining: ${activeCycle.remainingDays} days (cycle need: ${formatCurrencyFromGhs(activeCycle.remainingAmount, display)})`
       : `Remaining: ${activeCycle.remainingDays} days`
     : null;
 
@@ -148,7 +150,7 @@ export default async function ClientSavingsPage() {
       ? "Loan is already paid off"
       : balance <= 0
         ? "No savings balance available"
-        : `Use savings to pay loan balance of ${formatCurrency(activeLoan.currentBalance)}`;
+        : `Use savings to pay loan balance of ${formatCurrencyFromGhs(activeLoan.currentBalance, display)}`;
   const payLoanSublabel = activeLoan?.nextPaymentDate
     ? `Due: ${new Date(activeLoan.nextPaymentDate).toLocaleDateString("en-GB", {
         month: "short",
@@ -173,7 +175,7 @@ export default async function ClientSavingsPage() {
           icon={<i className="fas fa-wallet" />}
         >
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
-            {formatCurrency(balance)}
+            {formatCurrencyFromGhs(balance, display)}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             Available for withdrawals and payments
@@ -308,10 +310,10 @@ export default async function ClientSavingsPage() {
                       }`}
                     >
                       {isDeposit ? "+" : "-"}
-                      {formatCurrency(t.amount)}
+                      {formatCurrencyFromGhs(t.amount, display)}
                     </span>
                     <small className="block text-xs text-gray-500 dark:text-gray-500 mt-1">
-                      Balance: {formatCurrency(t.balanceAfter)}
+                      Balance: {formatCurrencyFromGhs(t.balanceAfter, display)}
                     </small>
                   </div>
                 </div>

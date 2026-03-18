@@ -1,16 +1,20 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { getClientsList } from "@/lib/dashboard";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { WithdrawalForm } from "@/app/(dashboard)/admin/withdrawals/WithdrawalForm";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 
 export default async function ManagerWithdrawalsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "manager") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const [clientsList, recentWithdrawals] = await Promise.all([
     getClientsList(),
@@ -76,7 +80,7 @@ export default async function ManagerWithdrawalsPage() {
                       </p>
                     </div>
                     <span className="font-semibold text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                      {formatCurrency(Number(w.amount))}
+                      {formatCurrencyFromGhs(Number(w.amount), display)}
                     </span>
                   </div>
                 </li>

@@ -1,15 +1,19 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
-import { getClientByUserId, getClientCyclesPageData, formatCurrency } from "@/lib/dashboard";
+import { getClientByUserId, getClientCyclesPageData, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard, StatCard, SectionTitle } from "@/components/dashboard";
 import { CycleItemRow } from "./CycleItemRow";
 
 export default async function ClientCyclesCompletedPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "client") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const userId = (session.user as { id?: string }).id;
   const client = await getClientByUserId(userId ? parseInt(String(userId), 10) : 0);
@@ -59,7 +63,7 @@ export default async function ClientCyclesCompletedPage() {
           />
           <StatCard
             icon={<i className="fas fa-coins" />}
-            value={formatCurrency(summary.totalCollected)}
+            value={formatCurrencyFromGhs(summary.totalCollected, display)}
             label="Total Collected"
             variant="info"
           />

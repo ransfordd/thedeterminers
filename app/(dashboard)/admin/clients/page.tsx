@@ -1,9 +1,10 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions, resolveRole } from "@/lib/auth";
 import { getClientsList } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard, DataTable, AlertBanner } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { ClientActions } from "./ClientActions";
 
 type ClientRow = {
@@ -30,6 +31,8 @@ export default async function AdminClientsPage({
   const role = (session.user as { role?: string }).role;
   if (role !== "business_admin" && role !== "manager") redirect("/dashboard");
 
+
+  const display = await getCurrencyDisplay();
   const params = await searchParams;
   const clients = await getClientsList();
   const backHref = role === "manager" ? "/manager" : "/admin";
@@ -40,7 +43,7 @@ export default async function AdminClientsPage({
     { key: "email", header: "Email", render: (r: ClientRow) => r.email ?? "—" },
     { key: "clientCode", header: "Client Code", render: (r: ClientRow) => <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{r.clientCode}</code> },
     { key: "agent", header: "Agent", render: (r: ClientRow) => r.agentName ? <><strong>{r.agentName}</strong><br /><small className="text-gray-500 dark:text-gray-400">{r.agentCode}</small></> : <span className="text-gray-500">No Agent</span> },
-    { key: "dailyDepositAmount", header: "Daily Amount", render: (r: ClientRow) => <span className="font-medium text-green-700 dark:text-green-300">{formatCurrency(r.dailyDepositAmount)}</span> },
+    { key: "dailyDepositAmount", header: "Daily Amount", render: (r: ClientRow) => <span className="font-medium text-green-700 dark:text-green-300">{formatCurrencyFromGhs(r.dailyDepositAmount, display)}</span> },
     { key: "status", header: "Status", render: (r: ClientRow) => <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200" : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}`}>{r.status}</span> },
     { key: "actions", header: "Actions", render: (r: ClientRow) => <ClientActions row={r} isAdmin={true} /> },
   ];

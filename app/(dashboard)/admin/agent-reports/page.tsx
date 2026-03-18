@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import Link from "next/link";
 import { Suspense } from "react";
 import { authOptions, resolveRole } from "@/lib/auth";
 import { getAgentReportData } from "@/lib/dashboard/reports";
 import { PageHeader, ModernCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { AgentReportFilters } from "./AgentReportFilters";
 import { AgentReportExport } from "./AgentReportExport";
 
@@ -19,6 +20,8 @@ export default async function AdminAgentReportsPage({
   const role = await resolveRole(session);
   const allowed = role === "business_admin" || role === "manager" || role === "";
   if (!allowed) redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
   const effectiveRole = role || "manager";
 
   const params = await searchParams;
@@ -94,8 +97,8 @@ export default async function AdminAgentReportsPage({
                       <span className="text-xs text-gray-500 dark:text-gray-400">{a.agentCode}</span>
                     </td>
                     <td className="py-2 px-3">{a.collectionsCount.toLocaleString()}</td>
-                    <td className="py-2 px-3 font-medium">{formatCurrency(a.totalCollected)}</td>
-                    <td className="py-2 px-3">{formatCurrency(a.avgCollection)}</td>
+                    <td className="py-2 px-3 font-medium">{formatCurrencyFromGhs(a.totalCollected, display)}</td>
+                    <td className="py-2 px-3">{formatCurrencyFromGhs(a.avgCollection, display)}</td>
                     <td className="py-2 px-3">{a.cyclesCompleted.toLocaleString()}</td>
                     <td className="py-2 px-3">
                       {a.lastCollection

@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { Suspense } from "react";
 import { authOptions, resolveRole } from "@/lib/auth";
 import { getFinancialReportData } from "@/lib/dashboard/reports";
 import { getAgentsList } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard, StatCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { ReportFilters } from "./ReportFilters";
 
 export default async function AdminReportsPage({
@@ -18,6 +19,8 @@ export default async function AdminReportsPage({
   const role = await resolveRole(session);
   const allowed = role === "business_admin" || role === "manager" || role === "";
   if (!allowed) redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
   const effectiveRole = role || "manager";
 
   const params = await searchParams;
@@ -68,19 +71,19 @@ export default async function AdminReportsPage({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatCard
           icon={<i className="fas fa-arrow-down text-green-600" />}
-          value={formatCurrency(reportData.totalDeposits)}
+          value={formatCurrencyFromGhs(reportData.totalDeposits, display)}
           label="Total Deposits"
           variant="success"
         />
         <StatCard
           icon={<i className="fas fa-arrow-up text-amber-600" />}
-          value={formatCurrency(reportData.totalWithdrawals)}
+          value={formatCurrencyFromGhs(reportData.totalWithdrawals, display)}
           label="Total Withdrawals"
           variant="warning"
         />
         <StatCard
           icon={<i className="fas fa-balance-scale text-cyan-600" />}
-          value={formatCurrency(reportData.netFlow)}
+          value={formatCurrencyFromGhs(reportData.netFlow, display)}
           label="Net Flow"
           variant="info"
         />
@@ -111,7 +114,7 @@ export default async function AdminReportsPage({
                 {reportData.depositsByDate.map((row) => (
                   <tr key={row.date} className="border-b border-gray-100 dark:border-gray-800">
                     <td className="py-2 px-3">{new Date(row.date + "Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
-                    <td className="py-2 px-3 font-medium">{formatCurrency(row.total)}</td>
+                    <td className="py-2 px-3 font-medium">{formatCurrencyFromGhs(row.total, display)}</td>
                     <td className="py-2 px-3">{row.count}</td>
                   </tr>
                 ))}
@@ -146,7 +149,7 @@ export default async function AdminReportsPage({
                     <td className="py-2 px-3">{tx.clientName}</td>
                     <td className="py-2 px-3">{tx.receiptNumber}</td>
                     <td className="py-2 px-3">{tx.collectionTime.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
-                    <td className="py-2 px-3 font-medium">{formatCurrency(tx.amount)}</td>
+                    <td className="py-2 px-3 font-medium">{formatCurrencyFromGhs(tx.amount, display)}</td>
                     <td className="py-2 px-3">{tx.agentCode}</td>
                   </tr>
                 ))}
@@ -175,7 +178,7 @@ export default async function AdminReportsPage({
                 {reportData.withdrawalsByDate.map((row) => (
                   <tr key={row.date} className="border-b border-gray-100 dark:border-gray-800">
                     <td className="py-2 px-3">{new Date(row.date + "Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
-                    <td className="py-2 px-3 font-medium">{formatCurrency(row.total)}</td>
+                    <td className="py-2 px-3 font-medium">{formatCurrencyFromGhs(row.total, display)}</td>
                     <td className="py-2 px-3">{row.count}</td>
                   </tr>
                 ))}
@@ -214,7 +217,7 @@ export default async function AdminReportsPage({
                     <td className="py-2 px-3">{tx.clientName}</td>
                     <td className="py-2 px-3">{tx.receiptNumber}</td>
                     <td className="py-2 px-3">{tx.transactionTime.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
-                    <td className="py-2 px-3 font-medium">{formatCurrency(tx.amount)}</td>
+                    <td className="py-2 px-3 font-medium">{formatCurrencyFromGhs(tx.amount, display)}</td>
                     <td className="py-2 px-3">{tx.cycleNumber != null ? `Cycle ${tx.cycleNumber}` : "Manual"}</td>
                   </tr>
                 ))}
@@ -245,7 +248,7 @@ export default async function AdminReportsPage({
                   <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
                     <td className="py-2 px-3 font-medium">{a.agentName}</td>
                     <td className="py-2 px-3">{a.collectionsCount}</td>
-                    <td className="py-2 px-3">{formatCurrency(a.totalCollected)}</td>
+                    <td className="py-2 px-3">{formatCurrencyFromGhs(a.totalCollected, display)}</td>
                     <td className="py-2 px-3">{a.cyclesCompleted}</td>
                   </tr>
                 ))}

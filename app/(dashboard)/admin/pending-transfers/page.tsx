@@ -1,9 +1,10 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { TransferButton } from "./TransferButton";
 
 function toNum(d: unknown): number {
@@ -14,7 +15,10 @@ function toNum(d: unknown): number {
 export default async function AdminPendingTransfersPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "business_admin") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const cycles = await prisma.susuCycle.findMany({
     where: { status: "completed", payoutAmount: { gt: 0 }, payoutTransferred: false },
@@ -31,7 +35,7 @@ export default async function AdminPendingTransfersPage() {
   const columns = [
     { key: "clientCode", header: "Client Code", render: (r: { clientCode: string }) => <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{r.clientCode}</code> },
     { key: "clientName", header: "Client" },
-    { key: "payoutAmount", header: "Payout Amount", render: (r: { payoutAmount: number }) => formatCurrency(r.payoutAmount) },
+    { key: "payoutAmount", header: "Payout Amount", render: (r: { payoutAmount: number }) => formatCurrencyFromGhs(r.payoutAmount, display) },
     { key: "completionDate", header: "Completed", render: (r: { completionDate: Date | null }) => r.completionDate ? new Date(r.completionDate).toLocaleDateString("en-GB") : "—" },
     { key: "id", header: "Action", render: (r: { id: number }) => <TransferButton cycleId={r.id} /> },
   ];

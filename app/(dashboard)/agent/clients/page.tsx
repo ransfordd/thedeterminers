@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
-import { getAgentDashboardData, formatCurrency } from "@/lib/dashboard";
+import { getAgentDashboardData, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
 
 type ClientRow = {
@@ -19,7 +20,10 @@ type ClientRow = {
 export default async function AgentClientsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "agent") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const userId = (session.user as { id?: string }).id;
   const data = await getAgentDashboardData(userId ? parseInt(String(userId), 10) : 0);
@@ -56,7 +60,7 @@ export default async function AgentClientsPage() {
         </div>
       ),
     },
-    { key: "dailyDepositAmount", header: "Daily Amount", render: (r: ClientRow) => <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30">{formatCurrency(r.dailyDepositAmount)}</span> },
+    { key: "dailyDepositAmount", header: "Daily Amount", render: (r: ClientRow) => <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30">{formatCurrencyFromGhs(r.dailyDepositAmount, display)}</span> },
     { key: "status", header: "Status", render: (r: ClientRow) => <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${r.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200" : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}`}><i className={`fas fa-${r.status === "active" ? "check-circle" : "exclamation-triangle"}`} /> {r.status.toUpperCase()}</span> },
     {
       key: "actions",

@@ -19,28 +19,6 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
     },
   });
   await prisma.systemSetting.upsert({
-    where: { settingKey: "susu_days" },
-    update: {},
-    create: {
-      settingKey: "susu_days",
-      settingValue: "31",
-      settingType: "number",
-      category: "susu",
-      description: "Susu cycle days",
-    },
-  });
-  await prisma.systemSetting.upsert({
-    where: { settingKey: "susu_payout_days" },
-    update: {},
-    create: {
-      settingKey: "susu_payout_days",
-      settingValue: "30",
-      settingType: "number",
-      category: "susu",
-      description: "Payout days",
-    },
-  });
-  await prisma.systemSetting.upsert({
     where: { settingKey: "penalty_rate_percent_per_day" },
     update: {},
     create: {
@@ -86,9 +64,29 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
   });
 
   const systemSettingsToSeed: Array<{ key: string; value: string; type: "string" | "number" | "boolean"; category: string; description: string }> = [
-    { key: "currency", value: "GHS", type: "string", category: "system", description: "Currency" },
+    { key: "currency", value: "GHS", type: "string", category: "system", description: "Display currency (amounts stored in GHS)" },
+    {
+      key: "currency_rate_from_ghs",
+      value: "1",
+      type: "number",
+      category: "system",
+      description: "Legacy display rate (hidden; use USD/EUR rows below)",
+    },
+    {
+      key: "currency_rate_usd_per_ghs",
+      value: "0.0916",
+      type: "number",
+      category: "system",
+      description: "USD per 1 GHS (display)",
+    },
+    {
+      key: "currency_rate_eur_per_ghs",
+      value: "0.055",
+      type: "number",
+      category: "system",
+      description: "EUR per 1 GHS (display)",
+    },
     { key: "default_interest_rate", value: "0.5", type: "number", category: "loans", description: "Default interest rate (%)" },
-    { key: "default_susu_cycle_days", value: "30", type: "number", category: "susu", description: "Default Susu cycle (days)" },
     { key: "min_loan_amount", value: "5", type: "number", category: "loans", description: "Minimum loan amount" },
     { key: "max_loan_amount", value: "8", type: "number", category: "loans", description: "Maximum loan amount" },
     { key: "late_payment_fee", value: "1", type: "number", category: "loans", description: "Late payment fee" },

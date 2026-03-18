@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
-import { getAgentDashboardData, formatCurrency } from "@/lib/dashboard";
+import { getAgentDashboardData, formatCurrencyFromGhs } from "@/lib/dashboard";
 import {
   StatCard,
   WelcomeBanner,
@@ -13,7 +14,10 @@ import {
 export default async function AgentDashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "agent") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const userId = (session.user as { id?: string }).id;
   const numericId = userId ? parseInt(String(userId), 10) : 0;
@@ -37,7 +41,7 @@ export default async function AgentDashboardPage() {
     { key: "name", header: "Name", render: (r: { firstName: string; lastName: string }) => `${r.firstName} ${r.lastName}` },
     { key: "email", header: "Email" },
     { key: "phone", header: "Phone" },
-    { key: "dailyDepositAmount", header: "Daily Amount", render: (r: { dailyDepositAmount: number }) => <span className="font-semibold text-green-700 dark:text-green-300">{formatCurrency(r.dailyDepositAmount)}</span> },
+    { key: "dailyDepositAmount", header: "Daily Amount", render: (r: { dailyDepositAmount: number }) => <span className="font-semibold text-green-700 dark:text-green-300">{formatCurrencyFromGhs(r.dailyDepositAmount, display)}</span> },
     { key: "status", header: "Status", render: (r: { status: string }) => <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200" : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}`}>{r.status}</span> },
     { key: "createdAt", header: "Joined", render: (r: { createdAt: Date }) => new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) },
   ];
@@ -54,10 +58,10 @@ export default async function AgentDashboardPage() {
           Statistics
         </SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard icon={<i className="fas fa-piggy-bank text-blue-600" />} value={formatCurrency(susuToday)} label="Susu Collected Today" sublabel={`Total: ${formatCurrency(totalSusuCollected)}`} variant="primary" />
-          <StatCard icon={<i className="fas fa-money-bill-wave text-green-600" />} value={formatCurrency(loanToday)} label="Loan Collected Today" sublabel={`Total: ${formatCurrency(totalLoanCollected)}`} variant="success" />
+          <StatCard icon={<i className="fas fa-piggy-bank text-blue-600" />} value={formatCurrencyFromGhs(susuToday, display)} label="Susu Collected Today" sublabel={`Total: ${formatCurrencyFromGhs(totalSusuCollected, display)}`} variant="primary" />
+          <StatCard icon={<i className="fas fa-money-bill-wave text-green-600" />} value={formatCurrencyFromGhs(loanToday, display)} label="Loan Collected Today" sublabel={`Total: ${formatCurrencyFromGhs(totalLoanCollected, display)}`} variant="success" />
           <StatCard icon={<i className="fas fa-users text-amber-600" />} value={clientsCount.toLocaleString()} label="Assigned Clients" sublabel="Active clients under management" variant="warning" />
-          <StatCard icon={<i className="fas fa-percentage text-cyan-600" />} value={formatCurrency(commissionEarned)} label="Commission Earned" sublabel={`${commissionRate}% of total collections`} variant="info" />
+          <StatCard icon={<i className="fas fa-percentage text-cyan-600" />} value={formatCurrencyFromGhs(commissionEarned, display)} label="Commission Earned" sublabel={`${commissionRate}% of total collections`} variant="info" />
         </div>
       </section>
 
@@ -94,7 +98,7 @@ export default async function AgentDashboardPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Today&apos;s Total</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrency(susuToday + loanToday)}</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrencyFromGhs(susuToday + loanToday, display)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
@@ -103,7 +107,7 @@ export default async function AgentDashboardPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Collections</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrency(totalSusuCollected + totalLoanCollected)}</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrencyFromGhs(totalSusuCollected + totalLoanCollected, display)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">

@@ -1,9 +1,10 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 
 function toNum(d: unknown): number {
   if (d == null) return 0;
@@ -16,6 +17,8 @@ export default async function AdminEmergencyWithdrawalsPage() {
   const role = (session.user as { role?: string }).role;
   if (role !== "business_admin" && role !== "manager") redirect("/dashboard");
 
+
+  const display = await getCurrencyDisplay();
   const backHref = role === "manager" ? "/manager" : "/admin";
   const requests = await prisma.emergencyWithdrawalRequest.findMany({
     where: { status: "pending" },
@@ -33,8 +36,8 @@ export default async function AdminEmergencyWithdrawalsPage() {
   }));
   const columns = [
     { key: "clientName", header: "Client" },
-    { key: "requestedAmount", header: "Requested", render: (r: { requestedAmount: number }) => formatCurrency(r.requestedAmount) },
-    { key: "availableAmount", header: "Available", render: (r: { availableAmount: number }) => formatCurrency(r.availableAmount) },
+    { key: "requestedAmount", header: "Requested", render: (r: { requestedAmount: number }) => formatCurrencyFromGhs(r.requestedAmount, display) },
+    { key: "availableAmount", header: "Available", render: (r: { availableAmount: number }) => formatCurrencyFromGhs(r.availableAmount, display) },
     { key: "daysCollected", header: "Days Collected" },
     { key: "status", header: "Status", render: (r: { status: string }) => <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40">{r.status}</span> },
     { key: "createdAt", header: "Requested", render: (r: { createdAt: Date }) => new Date(r.createdAt).toLocaleString("en-GB") },

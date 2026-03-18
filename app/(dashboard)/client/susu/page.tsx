@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
 import { getClientByUserId } from "@/lib/dashboard";
 import { getClientSusuSchedule, formatCurrency } from "@/lib/dashboard";
@@ -8,7 +9,10 @@ import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
 export default async function ClientSusuPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "client") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const userId = (session.user as { id?: string }).id;
   const client = await getClientByUserId(userId ? parseInt(String(userId), 10) : 0);
@@ -25,8 +29,8 @@ export default async function ClientSusuPage() {
   const columns = [
     { key: "dayNumber", header: "Day", render: (r: { dayNumber: number }) => <span className="font-medium">{r.dayNumber}</span> },
     { key: "collectionDate", header: "Date", render: (r: { collectionDate: Date }) => new Date(r.collectionDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) },
-    { key: "expectedAmount", header: "Expected", render: (r: { expectedAmount: number }) => formatCurrency(r.expectedAmount) },
-    { key: "collectedAmount", header: "Collected", render: (r: { collectedAmount: number }) => formatCurrency(r.collectedAmount) },
+    { key: "expectedAmount", header: "Expected", render: (r: { expectedAmount: number }) => formatCurrencyFromGhs(r.expectedAmount, display) },
+    { key: "collectedAmount", header: "Collected", render: (r: { collectedAmount: number }) => formatCurrencyFromGhs(r.collectedAmount, display) },
     { key: "collectionStatus", header: "Status", render: (r: { collectionStatus: string }) => <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.collectionStatus === "collected" ? "bg-green-100 text-green-800 dark:bg-green-900/40" : r.collectionStatus === "pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40" : "bg-gray-100 text-gray-800"}`}>{r.collectionStatus}</span> },
   ];
 

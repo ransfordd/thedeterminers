@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth";
 import { redirect, notFound } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
-import { getAgentDashboardData, formatCurrency } from "@/lib/dashboard";
+import { getAgentDashboardData, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { prisma } from "@/lib/db";
 
@@ -19,7 +20,10 @@ export default async function AgentClientCalendarPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
   if ((session.user as { role?: string }).role !== "agent") redirect("/dashboard");
+
+  const display = await getCurrencyDisplay();
 
   const { clientId: clientIdParam } = await params;
   const clientId = parseInt(clientIdParam, 10);
@@ -83,7 +87,7 @@ export default async function AgentClientCalendarPage({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="rounded-lg bg-gray-50 dark:bg-gray-800/50 p-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Daily Amount</p>
-                    <p className="font-semibold text-gray-900 dark:text-white">{formatCurrency(dailyAmount)}</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{formatCurrencyFromGhs(dailyAmount, display)}</p>
                   </div>
                   <div className="rounded-lg bg-gray-50 dark:bg-gray-800/50 p-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Remaining</p>
@@ -116,7 +120,7 @@ export default async function AgentClientCalendarPage({
                           <tr key={c.id} className="border-b border-gray-100 dark:border-gray-800">
                             <td className="py-2 pr-2">{c.dayNumber}</td>
                             <td className="py-2 pr-2">{c.collectionDate.toLocaleDateString("en-GB")}</td>
-                            <td className="py-2 pr-2">{formatCurrency(toNum(c.collectedAmount))}</td>
+                            <td className="py-2 pr-2">{formatCurrencyFromGhs(toNum(c.collectedAmount), display)}</td>
                             <td className="py-2">
                               <span className={c.collectionStatus === "collected" ? "text-green-600 dark:text-green-400" : "text-gray-500"}>
                                 {c.collectionStatus === "collected" ? "Collected" : "Pending"}
@@ -148,7 +152,7 @@ export default async function AgentClientCalendarPage({
               <p><span className="text-gray-500 dark:text-gray-400">Code:</span> {client.clientCode}</p>
               {client.user.phone && <p><span className="text-gray-500 dark:text-gray-400">Phone:</span> {client.user.phone}</p>}
               {client.user.email && <p><span className="text-gray-500 dark:text-gray-400">Email:</span> {client.user.email}</p>}
-              <p><span className="text-gray-500 dark:text-gray-400">Daily Amount:</span> {formatCurrency(dailyAmount)}</p>
+              <p><span className="text-gray-500 dark:text-gray-400">Daily Amount:</span> {formatCurrencyFromGhs(dailyAmount, display)}</p>
             </div>
           </ModernCard>
           {collections.length > 0 && (
@@ -157,7 +161,7 @@ export default async function AgentClientCalendarPage({
                 {collections.slice(-5).reverse().map((c) => (
                   <li key={c.id} className="flex justify-between items-center">
                     <span>Day {c.dayNumber} · {c.collectionDate.toLocaleDateString("en-GB", { month: "short", day: "numeric" })}</span>
-                    <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(toNum(c.collectedAmount))}</span>
+                    <span className="font-medium text-green-600 dark:text-green-400">{formatCurrencyFromGhs(toNum(c.collectedAmount), display)}</span>
                   </li>
                 ))}
               </ul>

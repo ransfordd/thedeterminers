@@ -3,13 +3,15 @@ import { unstable_cache } from "next/cache";
 /** Keys used by system (non-business) settings. Business keys are in business-settings.ts. */
 const SYSTEM_SETTING_KEYS = [
   "currency",
+  "currency_rate_from_ghs",
+  "currency_rate_usd_per_ghs",
+  "currency_rate_eur_per_ghs",
   "backup_frequency",
   "public_home_url",
   "default_interest_rate",
   "min_loan_amount",
   "max_loan_amount",
   "late_payment_fee",
-  "default_susu_cycle_days",
   "sms_enabled",
   "email_enabled",
   "notification_retention_days",
@@ -73,8 +75,46 @@ function parseNum(val: string | undefined, fallback: number): number {
 }
 
 export async function getCurrency(): Promise<string> {
-  const map = await getSystemSettings(["currency"]);
-  return (map.get("currency")?.trim() || "GHS").toUpperCase();
+  const d = await getCurrencyDisplay();
+  return d.code;
+}
+
+/** Stored amounts are GHS; display may convert using admin-set rate. */
+export type CurrencyDisplay = { code: string; rateFromGhs: number };
+
+function parseDisplayRate(raw: string | undefined): number | null {
+  const r = parseFloat((raw ?? "").trim());
+  if (!Number.isFinite(r) || r <= 0 || r === 1) return null;
+  return r;
+}
+
+/** USD/EUR-specific rate, else legacy single rate, else 1 (no conversion). */
+function resolveRateForCode(
+  code: "USD" | "EUR",
+  map: Map<string, string>
+): number {
+  const specific =
+    code === "USD"
+      ? parseDisplayRate(map.get("currency_rate_usd_per_ghs"))
+      : parseDisplayRate(map.get("currency_rate_eur_per_ghs"));
+  if (specific != null) return specific;
+  const legacy = parseDisplayRate(map.get("currency_rate_from_ghs"));
+  if (legacy != null) return legacy;
+  return 1;
+}
+
+export async function getCurrencyDisplay(): Promise<CurrencyDisplay> {
+  const map = await getSystemSettings([
+    "currency",
+    "currency_rate_from_ghs",
+    "currency_rate_usd_per_ghs",
+    "currency_rate_eur_per_ghs",
+  ]);
+  const code = (map.get("currency")?.trim() || "GHS").toUpperCase();
+  if (code === "GHS") return { code: "GHS", rateFromGhs: 1 };
+  if (code === "USD") return { code: "USD", rateFromGhs: resolveRateForCode("USD", map) };
+  if (code === "EUR") return { code: "EUR", rateFromGhs: resolveRateForCode("EUR", map) };
+  return { code, rateFromGhs: 1 };
 }
 
 export async function getSecuritySettings(): Promise<{
@@ -118,11 +158,6 @@ export async function getLoanDefaults(): Promise<{
     maxLoanAmount: parseFloat(map.get("max_loan_amount") ?? "8") || 8,
     latePaymentFee: parseFloat(map.get("late_payment_fee") ?? "1") || 1,
   };
-}
-
-export async function getDefaultSusuCycleDays(): Promise<number> {
-  const map = await getSystemSettings(["default_susu_cycle_days"]);
-  return parseNum(map.get("default_susu_cycle_days"), 30);
 }
 
 export async function isSmsEnabled(): Promise<boolean> {

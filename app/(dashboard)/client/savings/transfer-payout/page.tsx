@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions } from "@/lib/auth";
-import { getClientByUserId, getClientSavingsPage, formatCurrency } from "@/lib/dashboard";
+import { getClientByUserId, getClientSavingsPage, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { TransferPayoutButtons } from "./TransferPayoutButtons";
 
@@ -14,6 +15,8 @@ export default async function TransferPayoutPage() {
   const client = await getClientByUserId(userId ? parseInt(String(userId), 10) : 0);
   if (!client) redirect("/client/savings");
 
+
+  const display = await getCurrencyDisplay();
   const { pendingPayoutCycles } = await getClientSavingsPage(client.id);
 
   return (
@@ -52,7 +55,7 @@ export default async function TransferPayoutPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(p.payoutAmount)}
+                    {formatCurrencyFromGhs(p.payoutAmount, display)}
                   </span>
                   <TransferPayoutButtons cycleId={p.id} />
                 </div>

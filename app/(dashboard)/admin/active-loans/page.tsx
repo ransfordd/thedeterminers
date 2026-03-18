@@ -1,16 +1,18 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getCurrencyDisplay } from "@/lib/system-settings";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { getActiveLoansList } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard, StatCard } from "@/components/dashboard";
-import { formatCurrency } from "@/lib/dashboard";
+import { formatCurrencyFromGhs } from "@/lib/dashboard";
 
 export default async function AdminActiveLoansPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
   if ((session.user as { role?: string }).role !== "business_admin") redirect("/dashboard");
 
+  const display = await getCurrencyDisplay();
   const loans = await getActiveLoansList();
   const totalBalance = loans.reduce((s, l) => s + l.currentBalance, 0);
   const today = new Date();
@@ -31,7 +33,7 @@ export default async function AdminActiveLoansPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
         <StatCard
           icon={<i className="fas fa-wallet text-green-600" />}
-          value={formatCurrency(totalBalance)}
+          value={formatCurrencyFromGhs(totalBalance, display)}
           label="Total Outstanding Balance"
           variant="success"
         />
@@ -85,9 +87,9 @@ export default async function AdminActiveLoansPage() {
                         </Link>
                       </td>
                       <td className="py-2 px-3">{l.productName}</td>
-                      <td className="py-2 px-3 text-right">{formatCurrency(l.principalAmount)}</td>
+                      <td className="py-2 px-3 text-right">{formatCurrencyFromGhs(l.principalAmount, display)}</td>
                       <td className="py-2 px-3 text-right font-medium">
-                        {formatCurrency(l.currentBalance)}
+                        {formatCurrencyFromGhs(l.currentBalance, display)}
                       </td>
                       <td className="py-2 px-3">
                         {new Date(l.disbursementDate).toLocaleDateString("en-GB", {

@@ -46,6 +46,29 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
   const appName = rows.find((r) => r.settingKey === "app_name")?.settingValue ?? "The Determiners Susu System";
   const appLogoPath = rows.find((r) => r.settingKey === "app_logo")?.settingValue ?? null;
   const rowsWithoutBranding = rows.filter((r) => r.settingKey !== "app_name" && r.settingKey !== "app_logo");
+  const keys = new Set(rowsWithoutBranding.map((r) => r.settingKey));
+  const displayRatePlaceholders: typeof rowsWithoutBranding = [];
+  if (!keys.has("currency_rate_usd_per_ghs")) {
+    displayRatePlaceholders.push({
+      id: 0,
+      settingKey: "currency_rate_usd_per_ghs",
+      settingValue: "",
+      settingType: "number",
+      category: "system",
+      description: "USD per 1 GHS (display)",
+    });
+  }
+  if (!keys.has("currency_rate_eur_per_ghs")) {
+    displayRatePlaceholders.push({
+      id: 0,
+      settingKey: "currency_rate_eur_per_ghs",
+      settingValue: "",
+      settingType: "number",
+      category: "system",
+      description: "EUR per 1 GHS (display)",
+    });
+  }
+  const settingsForUi = [...rowsWithoutBranding, ...displayRatePlaceholders];
   const holidayRows = holidays.map((h) => ({
     id: h.id,
     holidayName: h.holidayName,
@@ -88,7 +111,7 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
           <p className="text-gray-500 dark:text-gray-400 text-sm py-4">No settings defined. Run seed to add default settings.</p>
         ) : (
           <>
-            <SettingsByCategory settings={rowsWithoutBranding} />
+            <SettingsByCategory settings={settingsForUi} />
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 flex items-center gap-2">
               <i className="fas fa-bell text-indigo-500" aria-hidden />
               You will receive a notification when settings are successfully updated. Each row saves individually.

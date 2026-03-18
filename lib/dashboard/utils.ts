@@ -24,3 +24,11 @@ export function formatCurrency(amount: number, currency: string = "GHS"): string
   const sym = (currency || "GHS").trim().toUpperCase();
   return `${sym} ${Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
+
+export type CurrencyDisplayOpts = { code: string; rateFromGhs: number };
+
+/** Format a value stored in GHS using display currency and rate (display units per 1 GHS). */
+export function formatCurrencyFromGhs(amountGhs: number, display: CurrencyDisplayOpts): string {
+  const converted = Number(amountGhs) * display.rateFromGhs;
+  return formatCurrency(converted, display.code);
+}
