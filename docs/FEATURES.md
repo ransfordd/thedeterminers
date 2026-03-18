@@ -7,6 +7,7 @@
 - **Loan products:** Create/edit products (min/max amount, interest, term).
 - **Loan applications:** Review, approve/reject, set approved amount and term.
 - **Reports:** Financial report, agent commission report, analytics.
+- **Agent reports** (`/admin/agent-reports`): Per-agent **Total Collected** / collection counts include only Susu collections **recorded by that agent**; admin-entered collections on the same clients are excluded (see DISPLAYS.md).
 - **Susu:** Oversight; cycle and collection data.
 - **Savings:** Oversight; payout transfers, approvals.
 - **System:** Holidays calendar, system settings, notifications (send/inbox).

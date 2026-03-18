@@ -46,7 +46,9 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
           </button>
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Menu</span>
         </div>
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 p-4 lg:p-6 text-gray-900 dark:text-gray-100">
+          {children}
+        </main>
       </div>
     </div>
   );

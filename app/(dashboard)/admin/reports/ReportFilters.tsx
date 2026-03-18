@@ -5,14 +5,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 type AgentOption = { id: number; agentCode: string; firstName: string; lastName: string };
 
 function toYMD(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function ReportFilters({ agents }: { agents: AgentOption[] }) {
+export function ReportFilters({
+  agents,
+  defaultFrom,
+  defaultTo,
+}: {
+  agents: AgentOption[];
+  defaultFrom: string;
+  defaultTo: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromDate = searchParams.get("from_date") || "";
-  const toDate = searchParams.get("to_date") || "";
+  const fromDate = searchParams.get("from_date") || defaultFrom;
+  const toDate = searchParams.get("to_date") || defaultTo;
   const reportType = searchParams.get("report_type") || "all";
   const agentId = searchParams.get("agent_id") || "";
 
@@ -28,15 +36,17 @@ export function ReportFilters({ agents }: { agents: AgentOption[] }) {
     const form = e.currentTarget;
     const fd = new FormData(form);
     const params = new URLSearchParams();
-    const from = (fd.get("from_date") as string) || "";
-    const to = (fd.get("to_date") as string) || "";
+    const from = ((fd.get("from_date") as string) || "").trim() || defaultFrom;
+    const to = ((fd.get("to_date") as string) || "").trim() || defaultTo;
     const type = (fd.get("report_type") as string) || "all";
     const agent = (fd.get("agent_id") as string) || "";
-    if (from) params.set("from_date", from);
-    if (to) params.set("to_date", to);
+    params.set("from_date", from);
+    params.set("to_date", to);
     if (type && type !== "all") params.set("report_type", type);
     if (agent) params.set("agent_id", agent);
-    router.push(`/admin/reports?${params.toString()}`);
+    const q = params.toString();
+    router.push(`/admin/reports?${q}`);
+    router.refresh();
   }
 
   const thisMonth = () => {
@@ -55,9 +65,15 @@ export function ReportFilters({ agents }: { agents: AgentOption[] }) {
     router.push(`/admin/reports?from_date=${t}&to_date=${t}&report_type=deposits`);
   };
 
+  const formKey = `${fromDate}-${toDate}-${reportType}-${agentId}`;
+
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+      <form
+        key={formKey}
+        onSubmit={handleSubmit}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end"
+      >
         <div>
           <label htmlFor="from_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             From Date

@@ -37,7 +37,7 @@ export function StatCard({
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-2xl font-bold text-gray-900 dark:text-white truncate">
+        <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white break-words leading-tight hyphens-none">
           {value}
         </p>
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">

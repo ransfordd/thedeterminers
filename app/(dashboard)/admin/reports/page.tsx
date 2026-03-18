@@ -43,6 +43,11 @@ export default async function AdminReportsPage({
     .map((a) => ({ id: a.id, agentCode: a.agentCode, firstName: a.firstName, lastName: a.lastName }));
 
   const backHref = effectiveRole === "manager" ? "/manager" : "/admin";
+  const toYMD = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const defaultReportFrom = toYMD(firstOfMonth);
+  const defaultReportTo = toYMD(today);
+
   return (
     <>
       <PageHeader
@@ -64,7 +69,11 @@ export default async function AdminReportsPage({
         icon={<i className="fas fa-filter" />}
       >
         <Suspense fallback={<div className="text-sm text-gray-500">Loading filters…</div>}>
-          <ReportFilters agents={agents} />
+          <ReportFilters
+            agents={agents}
+            defaultFrom={defaultReportFrom}
+            defaultTo={defaultReportTo}
+          />
         </Suspense>
       </ModernCard>
 

@@ -21,6 +21,16 @@ body {
   background: var(--background);
 }
 
+/* next-themes: explicit light/dark overrides OS prefers-color-scheme so body text matches chosen theme */
+html.light body {
+  color: #111827;
+  background-color: #f9fafb;
+}
+html.dark body {
+  color: #f3f4f6;
+  background-color: #030712;
+}
+
 @keyframes scroll {
   0% {
     transform: translateX(0);

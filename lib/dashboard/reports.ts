@@ -1,4 +1,4 @@
-import { ManualTransactionType } from "@prisma/client";
+import { ManualTransactionType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
 
@@ -314,10 +314,9 @@ export async function getRevenueDashboardData(
       : [],
   ]);
 
-  const susuPaymentKeys = new Set(susuRows.map((r, i) => r.receiptNumber ?? `single-${i}`));
   const susu = {
     totalAmount: susuRows.reduce((s, r) => s + toNum(r.collectedAmount), 0),
-    transactionCount: susuPaymentKeys.size,
+    transactionCount: susuRows.length,
   };
   const loan = {
     totalAmount: loanRows.reduce((s, r) => s + toNum(r.amountPaid), 0),
@@ -332,7 +331,8 @@ export async function getRevenueDashboardData(
     transactionCount: manualWithdrawalRows.length,
   };
 
-  const totalRevenue = susu.totalAmount + loan.totalAmount + manualDeposits.totalAmount + manualWithdrawals.totalAmount;
+  /** PHP parity: inflows only (withdrawals shown separately). */
+  const totalRevenue = susu.totalAmount + loan.totalAmount + manualDeposits.totalAmount;
   const totalTransactions =
     susu.transactionCount + loan.transactionCount + manualDeposits.transactionCount + manualWithdrawals.transactionCount;
 
@@ -344,6 +344,300 @@ export async function getRevenueDashboardData(
     manualDeposits,
     manualWithdrawals,
   };
+}
+
+export type RevenueBreakdownRow = {
+  transactionType: string;
+  count: number;
+  totalAmount: number;
+  avgAmount: number;
+  minAmount: number;
+  maxAmount: number;
+  percentage: number;
+};
+
+export async function getRevenueTransactionBreakdown(
+  fromDate: Date,
+  toDate: Date
+): Promise<RevenueBreakdownRow[]> {
+  const dateFilter = { gte: fromDate, lte: toDate };
+
+  const [susuAgg, loanAgg, manualDepAgg, manualWdAgg] = await Promise.all([
+    prisma.dailyCollection.aggregate({
+      where: { collectionStatus: "collected", collectionDate: dateFilter },
+      _count: true,
+      _sum: { collectedAmount: true },
+      _avg: { collectedAmount: true },
+      _min: { collectedAmount: true },
+      _max: { collectedAmount: true },
+    }),
+    prisma.loanPayment.aggregate({
+      where: { paymentStatus: "paid", paymentDate: dateFilter },
+      _count: true,
+      _sum: { amountPaid: true },
+      _avg: { amountPaid: true },
+      _min: { amountPaid: true },
+      _max: { amountPaid: true },
+    }),
+    prisma.manualTransaction.aggregate({
+      where: { transactionType: "deposit", createdAt: dateFilter },
+      _count: true,
+      _sum: { amount: true },
+      _avg: { amount: true },
+      _min: { amount: true },
+      _max: { amount: true },
+    }),
+    prisma.manualTransaction.aggregate({
+      where: {
+        transactionType: { in: ["withdrawal", "savings_withdrawal", "emergency_withdrawal"] },
+        createdAt: dateFilter,
+      },
+      _count: true,
+      _sum: { amount: true },
+      _avg: { amount: true },
+      _min: { amount: true },
+      _max: { amount: true },
+    }),
+  ]);
+
+  const denom =
+    toNum(susuAgg._sum.collectedAmount) +
+    toNum(loanAgg._sum.amountPaid) +
+    toNum(manualDepAgg._sum.amount);
+
+  const mk = (
+    transactionType: string,
+    count: number,
+    total: number,
+    avg: Decimal | number | null,
+    min: Decimal | number | null,
+    max: Decimal | number | null
+  ): RevenueBreakdownRow => ({
+    transactionType,
+    count,
+    totalAmount: total,
+    avgAmount: count > 0 ? total / count : toNum(avg),
+    minAmount: toNum(min),
+    maxAmount: toNum(max),
+    percentage: denom > 0 ? (total / denom) * 100 : 0,
+  });
+
+  const rows: RevenueBreakdownRow[] = [
+    mk(
+      "susu_collection",
+      susuAgg._count,
+      toNum(susuAgg._sum.collectedAmount),
+      susuAgg._avg.collectedAmount,
+      susuAgg._min.collectedAmount,
+      susuAgg._max.collectedAmount
+    ),
+    mk(
+      "loan_payment",
+      loanAgg._count,
+      toNum(loanAgg._sum.amountPaid),
+      loanAgg._avg.amountPaid,
+      loanAgg._min.amountPaid,
+      loanAgg._max.amountPaid
+    ),
+    mk(
+      "manual_deposit",
+      manualDepAgg._count,
+      toNum(manualDepAgg._sum.amount),
+      manualDepAgg._avg.amount,
+      manualDepAgg._min.amount,
+      manualDepAgg._max.amount
+    ),
+  ];
+  if (manualWdAgg._count > 0) {
+    const c = manualWdAgg._count;
+    const t = toNum(manualWdAgg._sum.amount);
+    rows.push({
+      transactionType: "manual_withdrawal",
+      count: c,
+      totalAmount: t,
+      avgAmount: c > 0 ? t / c : 0,
+      minAmount: toNum(manualWdAgg._min.amount),
+      maxAmount: toNum(manualWdAgg._max.amount),
+      percentage: 0,
+    });
+  }
+  rows.sort((a, b) => b.totalAmount - a.totalAmount);
+  return rows;
+}
+
+export type RevenueAgentRow = {
+  agentId: number;
+  agentCode: string;
+  agentName: string;
+  susuRevenue: number;
+  loanRevenue: number;
+  totalRevenue: number;
+  susuCount: number;
+  loanCount: number;
+  performancePct: number;
+};
+
+export async function getRevenueAgentRows(fromDate: Date, toDate: Date): Promise<RevenueAgentRow[]> {
+  const dateFilter = { gte: fromDate, lte: toDate };
+
+  const [susuGroups, loanGroups] = await Promise.all([
+    prisma.dailyCollection.groupBy({
+      by: ["collectedById"],
+      where: {
+        collectionStatus: "collected",
+        collectionDate: dateFilter,
+        collectedById: { not: null },
+      },
+      _sum: { collectedAmount: true },
+      _count: { id: true },
+    }),
+    prisma.loanPayment.groupBy({
+      by: ["collectedById"],
+      where: {
+        paymentStatus: "paid",
+        paymentDate: dateFilter,
+        collectedById: { not: null },
+      },
+      _sum: { amountPaid: true },
+      _count: { id: true },
+    }),
+  ]);
+
+  const byAgent = new Map<
+    number,
+    { susuRevenue: number; loanRevenue: number; susuCount: number; loanCount: number }
+  >();
+
+  for (const g of susuGroups) {
+    const id = g.collectedById;
+    if (id == null) continue;
+    byAgent.set(id, {
+      susuRevenue: toNum(g._sum.collectedAmount),
+      loanRevenue: 0,
+      susuCount: g._count.id,
+      loanCount: 0,
+    });
+  }
+  for (const g of loanGroups) {
+    const id = g.collectedById;
+    if (id == null) continue;
+    const cur = byAgent.get(id) ?? {
+      susuRevenue: 0,
+      loanRevenue: 0,
+      susuCount: 0,
+      loanCount: 0,
+    };
+    cur.loanRevenue = toNum(g._sum.amountPaid);
+    cur.loanCount = g._count.id;
+    byAgent.set(id, cur);
+  }
+
+  const agentIds = [...byAgent.keys()].filter((id) => {
+    const v = byAgent.get(id)!;
+    return v.susuRevenue > 0 || v.loanRevenue > 0;
+  });
+  if (agentIds.length === 0) return [];
+
+  const agents = await prisma.agent.findMany({
+    where: { id: { in: agentIds }, status: "active" },
+    include: { user: true },
+  });
+
+  const grandTotal = agentIds.reduce((s, id) => {
+    const v = byAgent.get(id)!;
+    return s + v.susuRevenue + v.loanRevenue;
+  }, 0);
+
+  const rows: RevenueAgentRow[] = agents.map((a) => {
+    const v = byAgent.get(a.id)!;
+    const total = v.susuRevenue + v.loanRevenue;
+    return {
+      agentId: a.id,
+      agentCode: a.agentCode,
+      agentName: `${a.user.firstName ?? ""} ${a.user.lastName ?? ""}`.trim() || a.agentCode,
+      susuRevenue: v.susuRevenue,
+      loanRevenue: v.loanRevenue,
+      totalRevenue: total,
+      susuCount: v.susuCount,
+      loanCount: v.loanCount,
+      performancePct: grandTotal > 0 ? (total / grandTotal) * 100 : 0,
+    };
+  });
+  rows.sort((a, b) => b.totalRevenue - a.totalRevenue);
+  return rows;
+}
+
+export type RevenueMonthlyTrendRow = {
+  month: string;
+  label: string;
+  susuRevenue: number;
+  loanRevenue: number;
+  totalRevenue: number;
+  susuCount: number;
+  loanCount: number;
+};
+
+export async function getRevenueMonthlyTrends(
+  fromDate: Date,
+  toDate: Date
+): Promise<RevenueMonthlyTrendRow[]> {
+  const rows = await prisma.$queryRaw<
+    Array<{
+      month: string;
+      susu_revenue: unknown;
+      loan_revenue: unknown;
+      susu_count: bigint;
+      loan_count: bigint;
+    }>
+  >(Prisma.sql`
+    SELECT month,
+           SUM(susu_revenue)::float AS susu_revenue,
+           SUM(loan_revenue)::float AS loan_revenue,
+           SUM(susu_count)::bigint AS susu_count,
+           SUM(loan_count)::bigint AS loan_count
+    FROM (
+      SELECT TO_CHAR("collection_date", 'YYYY-MM') AS month,
+             SUM("collected_amount")::numeric AS susu_revenue,
+             0::numeric AS loan_revenue,
+             COUNT(*)::bigint AS susu_count,
+             0::bigint AS loan_count
+      FROM "DailyCollection"
+      WHERE "collection_status" = 'collected'
+        AND "collection_date" >= ${fromDate}
+        AND "collection_date" <= ${toDate}
+      GROUP BY TO_CHAR("collection_date", 'YYYY-MM')
+      UNION ALL
+      SELECT TO_CHAR("payment_date", 'YYYY-MM') AS month,
+             0::numeric,
+             SUM("amount_paid")::numeric,
+             0::bigint,
+             COUNT(*)::bigint
+      FROM "LoanPayment"
+      WHERE "payment_status" = 'paid'
+        AND "payment_date" >= ${fromDate}
+        AND "payment_date" <= ${toDate}
+      GROUP BY TO_CHAR("payment_date", 'YYYY-MM')
+    ) t
+    GROUP BY month
+    ORDER BY month DESC
+    LIMIT 12
+  `);
+
+  return rows.map((r) => {
+    const susu = Number(r.susu_revenue) || 0;
+    const loan = Number(r.loan_revenue) || 0;
+    const [y, m] = r.month.split("-").map(Number);
+    const label = new Date(y, m - 1, 1).toLocaleString("en-GB", { month: "short", year: "numeric" });
+    return {
+      month: r.month,
+      label,
+      susuRevenue: susu,
+      loanRevenue: loan,
+      totalRevenue: susu + loan,
+      susuCount: Number(r.susu_count),
+      loanCount: Number(r.loan_count),
+    };
+  });
 }
 
 export type AgentReportRow = {
@@ -376,6 +670,7 @@ export async function getAgentReportData(
     const [collectionsAgg, cyclesCount, lastColl] = await Promise.all([
       prisma.dailyCollection.aggregate({
         where: {
+          collectedById: a.id,
           susuCycle: { clientId: { in: clientIds } },
           collectionStatus: "collected",
           collectionDate: { gte: fromDate, lte: toDate },
@@ -392,6 +687,7 @@ export async function getAgentReportData(
       }),
       prisma.dailyCollection.findFirst({
         where: {
+          collectedById: a.id,
           susuCycle: { clientId: { in: clientIds } },
           collectionStatus: "collected",
           collectionDate: { gte: fromDate, lte: toDate },

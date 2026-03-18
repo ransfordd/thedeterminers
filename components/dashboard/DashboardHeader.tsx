@@ -106,7 +106,7 @@ export function DashboardHeader({
             <i className="fas fa-coins text-xl" aria-hidden />
           </span>
         )}
-        <span className="font-semibold text-white whitespace-nowrap">
+        <span className="font-semibold text-gray-900 dark:text-white leading-tight max-w-[50vw] sm:max-w-md">
           {appName}
         </span>
       </Link>
