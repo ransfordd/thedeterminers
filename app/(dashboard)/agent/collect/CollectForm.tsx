@@ -27,6 +27,7 @@ export function CollectForm({
   initialAccountType?: string;
   initialSusuAmount?: number;
 }) {
+  const currency = useCurrency();
   const [state, formAction] = useActionState(recordCollection, initialState);
   const [accountType, setAccountType] = useState<string>(initialAccountType === "loan" || initialAccountType === "both" ? initialAccountType : "susu");
   const [clientId, setClientId] = useState<string>(initialClientId != null ? String(initialClientId) : "");

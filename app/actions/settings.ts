@@ -57,8 +57,8 @@ export async function updateSetting(
   revalidatePath("/agent");
   revalidatePath("/client");
   revalidatePath("/");
-  revalidateTag("business-info");
-  revalidateTag("system-settings");
+  revalidateTag("business-info", "max");
+  revalidateTag("system-settings", "max");
   return { success: true };
 }
 

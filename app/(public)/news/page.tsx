@@ -8,7 +8,8 @@ export const metadata = {
   description: "Latest news and updates from Susu System",
 };
 
-const articles = [
+function getArticles(companyName: string) {
+  return [
   {
     id: "financial-planning",
     image: "/assets/images/Home-side/growth.jpg",
@@ -69,7 +70,7 @@ const articles = [
         <p>
           Remember, financial planning is a journey, not a destination. Start
           with small steps and gradually build momentum toward your financial
-          goals. {businessInfo.name} is here to support you every step of the
+          goals. {companyName} is here to support you every step of the
           way with our Susu collections and loan services.
         </p>
       </>
@@ -85,7 +86,7 @@ const articles = [
     content: (
       <>
         <p className="mb-4">
-          We&apos;re excited to announce major updates coming to {businessInfo.name}{" "}
+          We&apos;re excited to announce major updates coming to {companyName}{" "}
           mobile app in early 2025. These new features will make managing your
           finances even more convenient and secure.
         </p>
@@ -134,11 +135,11 @@ const articles = [
     image: "/assets/images/Home-side/badge.png",
     date: "December 5, 2024",
     title: "We're Now Licensed by Bank of Ghana",
-    excerpt: `${businessInfo.name} has received official licensing, ensuring your funds are protected.`,
+    excerpt: `${companyName} has received official licensing, ensuring your funds are protected.`,
     content: (
       <>
         <p className="mb-4">
-          We&apos;re proud to announce that {businessInfo.name} has officially
+          We&apos;re proud to announce that {companyName} has officially
           received our license from the Bank of Ghana, marking a significant
           milestone in our journey to provide secure and reliable financial
           services to Ghanaians.
@@ -163,7 +164,7 @@ const articles = [
           coverage.
         </p>
         <p>
-          Thank you for trusting {businessInfo.name} with your financial needs.
+          Thank you for trusting {companyName} with your financial needs.
           We look forward to continuing to serve you with even greater
           confidence and security as we grow together.
         </p>
@@ -171,9 +172,11 @@ const articles = [
     ),
   },
 ];
+}
 
 export default async function NewsPage() {
   const businessInfo = await getBusinessInfoFromDb();
+  const articles = getArticles(businessInfo.name);
   return (
     <div>
       <NewsHeroSlider />
