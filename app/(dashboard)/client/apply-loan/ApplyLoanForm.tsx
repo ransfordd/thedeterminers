@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { createLoanApplication, type ApplicationState } from "@/app/actions/applications";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
@@ -8,6 +9,19 @@ import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
 const initialState: ApplicationState = {};
 
 type ProductOption = { id: number; productName: string; productCode: string; minAmount: number; maxAmount: number; minTermMonths: number; maxTermMonths: number };
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      <i className="fas fa-paper-plane" /> {pending ? "Submitting..." : "Submit application"}
+    </button>
+  );
+}
 
 export function ApplyLoanForm({ clientId, products }: { clientId: number; products: ProductOption[] }) {
   const display = useCurrencyDisplay();
@@ -126,12 +140,7 @@ export function ApplyLoanForm({ clientId, products }: { clientId: number; produc
         </div>
       </div>
 
-      <button
-        type="submit"
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700"
-      >
-        <i className="fas fa-paper-plane" /> Submit application
-      </button>
+      <SubmitButton />
     </form>
   );
 }

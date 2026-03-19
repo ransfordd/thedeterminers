@@ -1,11 +1,13 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { getAgentsList } from "@/lib/dashboard/pages";
+import { getAgentsGlobalStats, getAgentsListPaged } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard, DataTable, StatCard, AlertBanner } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { ManagerAgentActions } from "./ManagerAgentActions";
+import { AgentsListToolbar } from "../../admin/agents/AgentsListToolbar";
+import { AgentsListPagination } from "../../admin/agents/AgentsListPagination";
 
 type AgentRow = {
   id: number;
@@ -23,10 +25,15 @@ type AgentRow = {
   hireDate: Date;
 };
 
+function parsePositiveInt(v: string | undefined, fallback: number): number {
+  const n = v ? parseInt(v, 10) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export default async function ManagerAgentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; page?: string; page_size?: string; q?: string }>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
@@ -34,11 +41,14 @@ export default async function ManagerAgentsPage({
 
   const display = await getCurrencyDisplay();
   const params = await searchParams;
-  const agents = await getAgentsList();
-  const totalAgents = agents.length;
-  const activeAgents = agents.filter((a) => a.status === "active").length;
-  const totalClients = agents.reduce((s, a) => s + a.clientCount, 0);
-  const totalCollections = agents.reduce((s, a) => s + a.totalCollections, 0);
+  const page = parsePositiveInt(params.page, 1);
+  const pageSize = Math.min(100, Math.max(10, parsePositiveInt(params.page_size, 25)));
+  const q = params.q?.trim() ?? "";
+  const [stats, { items: agents, total }] = await Promise.all([
+    getAgentsGlobalStats(),
+    getAgentsListPaged({ page, pageSize, search: q || undefined }),
+  ]);
+  const { totalAgents, activeAgents, totalClients, totalCollections } = stats;
 
   const columns = [
     { key: "agentCode", header: "Agent Code", render: (r: AgentRow) => <span className="font-medium">{r.agentCode}</span> },
@@ -77,7 +87,9 @@ export default async function ManagerAgentsPage({
         subtitle="Manage field agents and their assignments"
         icon={<i className="fas fa-table" />}
       >
+        <AgentsListToolbar pageSize={pageSize} initialQ={q} />
         <DataTable columns={columns} data={agents} emptyMessage="No agents yet." />
+        <AgentsListPagination basePath="/manager/agents" page={page} pageSize={pageSize} total={total} />
       </ModernCard>
     </>
   );

@@ -1,17 +1,31 @@
 "use client";
 
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { createClient, type CreateClientState } from "@/app/actions/clients";
 
 const initialState: CreateClientState = {};
 
 type AgentOption = { id: number; agentCode: string; firstName: string; lastName: string };
 
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      {pending ? "Creating..." : "Create Client"}
+    </button>
+  );
+}
+
 export function NewClientForm({ agents }: { agents: AgentOption[] }) {
   const [state, formAction] = useActionState(createClient, initialState);
 
   return (
-    <form action={formAction} className="space-y-6 max-w-2xl">
+    <form action={formAction} className="space-y-6 max-w-2xl" autoComplete="off">
       {state?.error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 text-sm">
           {state.error}
@@ -45,6 +59,7 @@ export function NewClientForm({ agents }: { agents: AgentOption[] }) {
             name="email"
             type="email"
             required
+            autoComplete="off"
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>
@@ -98,6 +113,7 @@ export function NewClientForm({ agents }: { agents: AgentOption[] }) {
             name="password"
             type="password"
             required
+            autoComplete="new-password"
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>
@@ -175,12 +191,7 @@ export function NewClientForm({ agents }: { agents: AgentOption[] }) {
         >
           Cancel
         </a>
-        <button
-          type="submit"
-          className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium bg-indigo-600 hover:bg-indigo-700"
-        >
-          Create Client
-        </button>
+        <SubmitButton />
       </div>
     </form>
   );

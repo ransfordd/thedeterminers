@@ -9,7 +9,7 @@ export function NewAgentForm() {
   const [state, formAction] = useActionState(createAgent, initialState);
 
   return (
-    <form action={formAction} className="space-y-6 max-w-2xl">
+    <form action={formAction} className="space-y-6 max-w-2xl" autoComplete="off">
       {state?.error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 text-sm">
           {state.error}
@@ -70,6 +70,7 @@ export function NewAgentForm() {
             name="email"
             type="email"
             required
+            autoComplete="off"
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>
@@ -116,6 +117,7 @@ export function NewAgentForm() {
             type="password"
             required
             minLength={6}
+            autoComplete="new-password"
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>
@@ -129,6 +131,7 @@ export function NewAgentForm() {
             type="password"
             required
             minLength={6}
+            autoComplete="new-password"
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>

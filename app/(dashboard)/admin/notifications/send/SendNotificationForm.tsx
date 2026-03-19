@@ -1,11 +1,25 @@
 "use client";
 
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { sendNotification, type SendNotificationState } from "@/app/actions/notifications";
 
 const initialState: SendNotificationState = {};
 
 type UserOption = { id: number; name: string; email: string; role: string };
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      <i className="fas fa-paper-plane" /> {pending ? "Sending..." : "Send notification"}
+    </button>
+  );
+}
 
 export function SendNotificationForm({ users }: { users: UserOption[] }) {
   const [state, formAction] = useActionState(sendNotification, initialState);
@@ -82,9 +96,7 @@ export function SendNotificationForm({ users }: { users: UserOption[] }) {
           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
         />
       </div>
-      <button type="submit" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700">
-        <i className="fas fa-paper-plane" /> Send notification
-      </button>
+      <SubmitButton />
     </form>
   );
 }

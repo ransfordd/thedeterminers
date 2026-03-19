@@ -2,10 +2,12 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions, resolveRole } from "@/lib/auth";
-import { getClientsList } from "@/lib/dashboard/pages";
+import { getClientsListPaged } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard, DataTable, AlertBanner } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { ClientActions } from "./ClientActions";
+import { ClientsListToolbar } from "./ClientsListToolbar";
+import { ClientsListPagination } from "./ClientsListPagination";
 
 type ClientRow = {
   id: number;
@@ -21,10 +23,15 @@ type ClientRow = {
   status: string;
 };
 
+function parsePositiveInt(v: string | undefined, fallback: number): number {
+  const n = v ? parseInt(v, 10) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export default async function AdminClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; page?: string; page_size?: string; q?: string }>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
@@ -34,7 +41,15 @@ export default async function AdminClientsPage({
 
   const display = await getCurrencyDisplay();
   const params = await searchParams;
-  const clients = await getClientsList();
+  const page = parsePositiveInt(params.page, 1);
+  const pageSize = Math.min(100, Math.max(10, parsePositiveInt(params.page_size, 25)));
+  const q = params.q?.trim() ?? "";
+  const listBasePath = role === "manager" ? "/manager/clients" : "/admin/clients";
+  const { items: clients, total } = await getClientsListPaged({
+    page,
+    pageSize,
+    search: q || undefined,
+  });
   const backHref = role === "manager" ? "/manager" : "/admin";
   const columns = [
     { key: "id", header: "ID", render: (r: ClientRow) => <span className="font-mono text-gray-600 dark:text-gray-400">{r.id}</span> },
@@ -65,7 +80,9 @@ export default async function AdminClientsPage({
         subtitle="Complete list of clients and their information"
         icon={<i className="fas fa-table" />}
       >
+        <ClientsListToolbar pageSize={pageSize} initialQ={q} />
         <DataTable columns={columns} data={clients} emptyMessage="No clients yet." />
+        <ClientsListPagination basePath={listBasePath} page={page} pageSize={pageSize} total={total} />
       </ModernCard>
     </>
   );

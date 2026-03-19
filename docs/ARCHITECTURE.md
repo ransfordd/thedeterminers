@@ -17,7 +17,8 @@ Auth and Route Handlers use Redis for session store and rate limiting.
 
 ## How server logic is used
 
-- **Server Actions:** Mutations (record collection, submit loan application, update settings). Validate with Zod; call engines in `lib/engines/`.
+- **Dashboard data:** `lib/dashboard/pages.ts` holds Prisma-backed list/detail helpers. Heavy lists (clients, agents, admin/manager transactions) use **paged** loaders (`getClientsListPaged`, `getAgentsListPaged`, `getAdminTransactionsPaged`, `getManagerTransactionsPaged`) with optional search; transaction rows are merged from susu/loan/(manual|savings) sources with date filters that support **from-only** or **to-only** ranges. Manager agent stat cards use `getAgentsGlobalStats()` so the full agent table is not loaded for counts.
+- **Server Actions:** Mutations (record collection, submit loan application, update settings). Each sensitive action enforces session + role authorization server-side (not only by page guards), then validates input and calls engines in `lib/engines/`.
 - **Route Handlers:** REST-style or webhook endpoints (e.g. CSV export, receipts). Also call engines; rate-limiting backed by Redis.
 - **Engines:** Core business logic (e.g. `lib/engines/susu-cycle.ts`, `lib/engines/loan.ts`). No HTTP; used only by Server Actions and Route Handlers.
 

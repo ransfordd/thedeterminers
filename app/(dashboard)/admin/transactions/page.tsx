@@ -2,19 +2,27 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { authOptions } from "@/lib/auth";
-import { getTransactionsListFiltered } from "@/lib/dashboard/pages";
+import { getAdminTransactionsPaged } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { TransactionFilters } from "./TransactionFilters";
 import { TransactionActions, TransactionRowActions } from "./TransactionActions";
+import { TransactionListPagination } from "./TransactionListPagination";
 import { deleteManualTransactionForm } from "@/app/actions/manual-transactions";
 import { deleteCollectionForm, deleteLoanPaymentForm } from "@/app/actions/transactions";
 
 export default async function AdminTransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; from_date?: string; to_date?: string }>;
+  searchParams: Promise<{
+    type?: string;
+    from_date?: string;
+    to_date?: string;
+    page?: string;
+    page_size?: string;
+    q?: string;
+  }>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
@@ -25,9 +33,19 @@ export default async function AdminTransactionsPage({
   const typeFilter = (params.type === "susu" || params.type === "loan" ? params.type : "all") as "all" | "susu" | "loan";
   const fromDate = params.from_date ? new Date(params.from_date + "T00:00:00Z") : undefined;
   const toDate = params.to_date ? new Date(params.to_date + "T23:59:59Z") : undefined;
+  const page = params.page ? Math.max(1, parseInt(params.page, 10) || 1) : 1;
+  const pageSize = Math.min(100, Math.max(10, params.page_size ? parseInt(params.page_size, 10) || 25 : 25));
+  const q = params.q?.trim() ?? "";
 
-  const [transactions, display] = await Promise.all([
-    getTransactionsListFiltered(200, typeFilter, fromDate, toDate),
+  const [{ rows: transactions, hasMore }, display] = await Promise.all([
+    getAdminTransactionsPaged({
+      page,
+      pageSize,
+      typeFilter,
+      fromDate,
+      toDate,
+      search: q || undefined,
+    }),
     getCurrencyDisplay(),
   ]);
   const backHref = role === "manager" ? "/manager" : "/admin";
@@ -62,7 +80,10 @@ export default async function AdminTransactionsPage({
       </ModernCard>
 
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">All Transactions</h3>
+        <div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">All Transactions</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Export and reports use the current page only.</p>
+        </div>
         <TransactionActions transactions={serializable} />
       </div>
 
@@ -132,6 +153,12 @@ export default async function AdminTransactionsPage({
                 ))}
               </tbody>
             </table>
+            <TransactionListPagination
+              basePath="/admin/transactions"
+              page={page}
+              pageSize={pageSize}
+              hasMore={hasMore}
+            />
           </div>
         )}
       </ModernCard>

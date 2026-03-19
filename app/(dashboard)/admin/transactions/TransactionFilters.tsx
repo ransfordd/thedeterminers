@@ -8,6 +8,8 @@ export function TransactionFilters() {
   const type = searchParams.get("type") || "all";
   const fromDate = searchParams.get("from_date") || "";
   const toDate = searchParams.get("to_date") || "";
+  const q = searchParams.get("q") || "";
+  const pageSize = searchParams.get("page_size") || "25";
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -17,14 +19,19 @@ export function TransactionFilters() {
     const t = (fd.get("type") as string) || "all";
     const from = (fd.get("from_date") as string) || "";
     const to = (fd.get("to_date") as string) || "";
+    const search = ((fd.get("q") as string) || "").trim();
+    const ps = (fd.get("page_size") as string) || "25";
     if (t && t !== "all") params.set("type", t);
     if (from) params.set("from_date", from);
     if (to) params.set("to_date", to);
+    if (search) params.set("q", search);
+    if (ps && ps !== "25") params.set("page_size", ps);
+    params.set("page", "1");
     router.push(`/admin/transactions?${params.toString()}`);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 xl:grid-cols-7 gap-4 items-end">
       <div>
         <label htmlFor="type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Transaction Type
@@ -63,6 +70,35 @@ export function TransactionFilters() {
           defaultValue={toDate}
           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
         />
+      </div>
+      <div className="md:col-span-2 lg:col-span-1">
+        <label htmlFor="tx-q" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Search
+        </label>
+        <input
+          id="tx-q"
+          name="q"
+          type="search"
+          defaultValue={q}
+          placeholder="Ref, client, agent…"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
+        />
+      </div>
+      <div>
+        <label htmlFor="page_size" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Rows / page
+        </label>
+        <select
+          id="page_size"
+          name="page_size"
+          defaultValue={pageSize}
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
+        >
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
       </div>
       <div className="flex gap-2">
         <button

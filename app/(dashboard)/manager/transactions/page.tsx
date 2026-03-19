@@ -3,16 +3,25 @@ import { redirect } from "next/navigation";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { Suspense } from "react";
 import { authOptions } from "@/lib/auth";
-import { getManagerTransactionsFiltered } from "@/lib/dashboard/pages";
+import { getManagerTransactionsPaged } from "@/lib/dashboard/pages";
 import { getClientsList } from "@/lib/dashboard";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { ManagerTransactionFilters } from "./ManagerTransactionFilters";
+import { TransactionListPagination } from "../../admin/transactions/TransactionListPagination";
 
 export default async function ManagerTransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; from_date?: string; to_date?: string; client_id?: string }>;
+  searchParams: Promise<{
+    type?: string;
+    from_date?: string;
+    to_date?: string;
+    client_id?: string;
+    page?: string;
+    page_size?: string;
+    q?: string;
+  }>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
@@ -27,10 +36,22 @@ export default async function ManagerTransactionsPage({
     : "all") as "all" | "susu" | "loan" | "savings";
   const fromDate = params.from_date ? new Date(params.from_date + "T00:00:00Z") : undefined;
   const toDate = params.to_date ? new Date(params.to_date + "T23:59:59Z") : undefined;
-  const clientId = params.client_id ? parseInt(params.client_id, 10) : null;
+  const clientIdParsed = params.client_id ? parseInt(params.client_id, 10) : NaN;
+  const clientId = Number.isFinite(clientIdParsed) ? clientIdParsed : null;
+  const page = params.page ? Math.max(1, parseInt(params.page, 10) || 1) : 1;
+  const pageSize = Math.min(100, Math.max(10, params.page_size ? parseInt(params.page_size, 10) || 25 : 25));
+  const q = params.q?.trim() ?? "";
 
-  const [transactions, clientsList] = await Promise.all([
-    getManagerTransactionsFiltered(200, typeFilter, fromDate, toDate, clientId ?? undefined),
+  const [{ rows: transactions, hasMore }, clientsList] = await Promise.all([
+    getManagerTransactionsPaged({
+      page,
+      pageSize,
+      typeFilter,
+      fromDate,
+      toDate,
+      clientId,
+      search: q || undefined,
+    }),
     getClientsList(),
   ]);
 
@@ -106,6 +127,12 @@ export default async function ManagerTransactionsPage({
         icon={<i className="fas fa-table" />}
       >
         <DataTable columns={columns} data={transactions} emptyMessage="No transactions found." />
+        <TransactionListPagination
+          basePath="/manager/transactions"
+          page={page}
+          pageSize={pageSize}
+          hasMore={hasMore}
+        />
       </ModernCard>
     </>
   );

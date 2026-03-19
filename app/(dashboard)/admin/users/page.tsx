@@ -29,6 +29,15 @@ export default async function AdminUsersPage() {
         backHref="/admin"
         variant="primary"
       />
+      <div className="mb-4">
+        <Link
+          href="/admin/users/new"
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+        >
+          <i className="fas fa-user-plus" />
+          Create User
+        </Link>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatCard
           icon={<i className="fas fa-users text-blue-600" />}

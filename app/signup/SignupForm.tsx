@@ -30,7 +30,7 @@ export function SignupForm({
   const [depositType, setDepositType] = useState<"fixed_amount" | "flexible_amount">("fixed_amount");
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={formAction} className="space-y-6" autoComplete="off">
       {state?.error && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-red-100 border-2 border-red-400 text-red-900 text-sm font-medium">
           <i className="fas fa-exclamation-circle flex-shrink-0" />
@@ -58,7 +58,7 @@ export function SignupForm({
           </div>
           <div>
             <label htmlFor="email" className={labelClass}>Email <span className="text-red-500">*</span></label>
-            <input id="email" name="email" type="email" required className={inputClass} placeholder="Email" />
+            <input id="email" name="email" type="email" required className={inputClass} placeholder="Email" autoComplete="off" />
           </div>
           <div>
             <label htmlFor="phone" className={labelClass}>Phone <span className="text-red-500">*</span></label>
@@ -66,7 +66,7 @@ export function SignupForm({
           </div>
           <div>
             <label htmlFor="password" className={labelClass}>Password <span className="text-red-500">*</span></label>
-            <input id="password" name="password" type="password" required minLength={8} className={inputClass} placeholder="Min 8 characters" />
+            <input id="password" name="password" type="password" required minLength={8} className={inputClass} placeholder="Min 8 characters" autoComplete="new-password" />
           </div>
           <div>
             <label htmlFor="date_of_birth" className={labelClass}>Date of Birth</label>

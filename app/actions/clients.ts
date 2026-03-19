@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 import { hash } from "bcryptjs";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getSecuritySettings } from "@/lib/system-settings";
 
@@ -15,6 +17,13 @@ export async function createClient(
   _prev: CreateClientState,
   formData: FormData
 ): Promise<CreateClientState> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+  const role = (session.user as { role?: string }).role;
+  if (role !== "business_admin" && role !== "manager") {
+    return { error: "Not authorized to create clients." };
+  }
+
   const username = (formData.get("username") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
   const firstName = (formData.get("firstName") as string)?.trim();

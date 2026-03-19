@@ -2,10 +2,12 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { authOptions, resolveRole } from "@/lib/auth";
-import { getAgentsList } from "@/lib/dashboard/pages";
+import { getAgentsListPaged } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard, DataTable, AlertBanner } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { AgentActions } from "./AgentActions";
+import { AgentsListToolbar } from "./AgentsListToolbar";
+import { AgentsListPagination } from "./AgentsListPagination";
 
 type AgentRow = {
   id: number;
@@ -22,10 +24,15 @@ type AgentRow = {
   status: string;
 };
 
+function parsePositiveInt(v: string | undefined, fallback: number): number {
+  const n = v ? parseInt(v, 10) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export default async function AdminAgentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; page?: string; page_size?: string; q?: string }>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
@@ -35,7 +42,15 @@ export default async function AdminAgentsPage({
 
   const display = await getCurrencyDisplay();
   const params = await searchParams;
-  const agents = await getAgentsList();
+  const page = parsePositiveInt(params.page, 1);
+  const pageSize = Math.min(100, Math.max(10, parsePositiveInt(params.page_size, 25)));
+  const q = params.q?.trim() ?? "";
+  const listBasePath = role === "manager" ? "/manager/agents" : "/admin/agents";
+  const { items: agents, total } = await getAgentsListPaged({
+    page,
+    pageSize,
+    search: q || undefined,
+  });
   const columns = [
     { key: "agentCode", header: "Agent Code", render: (r: AgentRow) => <span className="font-medium">{r.agentCode}</span> },
     { key: "name", header: "Name", render: (r: AgentRow) => <strong>{r.firstName} {r.lastName}</strong> },
@@ -67,7 +82,9 @@ export default async function AdminAgentsPage({
         subtitle="Complete list of agents and their performance metrics"
         icon={<i className="fas fa-table" />}
       >
+        <AgentsListToolbar pageSize={pageSize} initialQ={q} />
         <DataTable columns={columns} data={agents} emptyMessage="No agents yet." />
+        <AgentsListPagination basePath={listBasePath} page={page} pageSize={pageSize} total={total} />
       </ModernCard>
     </>
   );

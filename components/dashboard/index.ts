@@ -11,3 +11,4 @@ export { DashboardHeader } from "./DashboardHeader";
 export { DashboardSidebar, getSidebarLinks } from "./DashboardSidebar";
 export { DashboardShell } from "./DashboardShell";
 export { SusuCollectionTracker } from "./SusuCollectionTracker";
+export { TablePagination } from "./TablePagination";

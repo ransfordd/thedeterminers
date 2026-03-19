@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { recordCollection, type CollectState } from "@/app/actions/collect";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
@@ -13,6 +14,19 @@ type ClientOption = { id: number; clientCode: string; name: string; dailyAmount:
 const inputClass =
   "login-input w-full border border-[#e1e5e9] rounded-[10px] px-3 py-2.5 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/20 outline-none transition-all";
 const labelClass = "block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1";
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
+    >
+      <i className="fas fa-save" /> {pending ? "Recording..." : "Record Payment"}
+    </button>
+  );
+}
 
 export function CollectForm({
   clients,
@@ -189,12 +203,7 @@ export function CollectForm({
         />
       </div>
       <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-        <button
-          type="submit"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors"
-        >
-          <i className="fas fa-save" /> Record Payment
-        </button>
+        <SubmitButton />
       </div>
     </form>
   );
