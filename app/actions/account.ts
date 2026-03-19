@@ -79,7 +79,12 @@ export async function changePassword(
   return { success: true };
 }
 
-export type ProfilePictureState = { success?: boolean; error?: string };
+export type ProfilePictureState = {
+  success?: boolean;
+  error?: string;
+  /** Bumps on each success so client can call router.refresh() and show new image */
+  updatedAt?: number;
+};
 
 export async function uploadProfilePicture(
   _prev: ProfilePictureState,
@@ -116,7 +121,7 @@ export async function uploadProfilePicture(
     revalidatePath("/manager");
     revalidatePath("/agent");
     revalidatePath("/client");
-    return { success: true };
+    return { success: true, updatedAt: Date.now() };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to upload" };
   }
@@ -141,7 +146,7 @@ export async function removeProfilePicture(
   revalidatePath("/manager");
   revalidatePath("/agent");
   revalidatePath("/client");
-  return { success: true };
+  return { success: true, updatedAt: Date.now() };
 }
 
 export type PersonalInfoState = { success?: boolean; error?: string };

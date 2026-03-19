@@ -84,6 +84,7 @@ To get **app + PostgreSQL + Redis** from one deploy on Coolify, use the **Docker
 7. **Environment** (app service): Set in Coolify’s UI:
    - `NEXTAUTH_SECRET`: long random string (e.g. `openssl rand -base64 32`).
    - `NEXTAUTH_URL`: your public URL (e.g. `https://yourdomain.com`).
+8. **Profile pictures & uploads**: Files are stored under `/app/public/uploads` in the container. Without a **persistent volume**, images disappear after redeploy or restart (the DB still points at the old path). In Coolify, add a volume mounted at **`/app/public/uploads`** (or the whole `/app/public` if you prefer) so uploads survive restarts.
 
 After the first deploy, the app runs `prisma db push` and `prisma db seed` on startup, so the database is migrated and seeded automatically.
 

@@ -1,16 +1,25 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { uploadProfilePicture, removeProfilePicture, type ProfilePictureState } from "@/app/actions/account";
 
 const initialUploadState: ProfilePictureState = {};
 const initialRemoveState: ProfilePictureState = {};
 
 export function ProfilePictureCard({ profileImagePath }: { profileImagePath: string | null }) {
+  const router = useRouter();
   const [uploadState, uploadFormAction] = useActionState(uploadProfilePicture, initialUploadState);
   const [removeState, removeFormAction] = useActionState(removeProfilePicture, initialRemoveState);
   const error = uploadState?.error ?? removeState?.error;
   const success = uploadState?.success ?? removeState?.success;
+  const refreshKey = Math.max(uploadState?.updatedAt ?? 0, removeState?.updatedAt ?? 0);
+
+  useEffect(() => {
+    if (refreshKey > 0) {
+      router.refresh();
+    }
+  }, [refreshKey, router]);
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center">
