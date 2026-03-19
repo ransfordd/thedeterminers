@@ -9,6 +9,7 @@ import { ImpersonationBanner } from "@/components/dashboard/ImpersonationBanner"
 import { CurrencyDisplayWarningBanner } from "@/components/dashboard/CurrencyDisplayWarningBanner";
 import { CurrencyProvider } from "@/components/dashboard/CurrencyContext";
 import { prisma } from "@/lib/db";
+import { publicProfileImageUrl } from "@/lib/profile-image-url";
 
 export default async function DashboardLayout({
   children,
@@ -35,7 +36,8 @@ export default async function DashboardLayout({
     }),
     getCurrencyDisplay(),
   ]);
-  const profileImage = (currentUser?.profileImage ?? session.user.image ?? null) ?? null;
+  const profileImageRaw = (currentUser?.profileImage ?? session.user.image ?? null) ?? null;
+  const profileImage = publicProfileImageUrl(profileImageRaw);
   const displayName = (currentUser
     ? `${currentUser.firstName ?? ""} ${currentUser.lastName ?? ""}`.trim() || session.user.name
     : session.user.name) ?? null;

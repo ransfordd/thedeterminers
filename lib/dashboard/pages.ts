@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { publicProfileImageUrl } from "@/lib/profile-image-url";
 import type { Prisma } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
@@ -150,7 +151,7 @@ export async function getClientDetails(clientId: number) {
     clientName: `${c.user.firstName} ${c.user.lastName}`,
     email: c.user.email,
     phone: c.user.phone,
-    profileImage: c.user.profileImage,
+    profileImage: publicProfileImageUrl(c.user.profileImage),
     agentName: c.agent ? `${c.agent.user.firstName} ${c.agent.user.lastName}` : null,
     agentCode: c.agent?.agentCode ?? null,
   };

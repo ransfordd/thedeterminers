@@ -109,7 +109,8 @@ export async function uploadProfilePicture(
     const filePath = path.join(dir, filename);
     const bytes = await file.arrayBuffer();
     await writeFile(filePath, Buffer.from(bytes));
-    const publicPath = `/uploads/profiles/${filename}`;
+    /** Use API route so images work with Next standalone / Docker (public/ alone may 404). */
+    const publicPath = `/api/uploads/profiles/${encodeURIComponent(filename)}`;
 
     await prisma.user.update({
       where: { id: userId },

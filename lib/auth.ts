@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/activity-log";
 import { normalizePhone } from "@/lib/sms";
 import { verifyImpersonationToken } from "@/lib/impersonate";
 import { getSecuritySettings } from "@/lib/system-settings";
+import { publicProfileImageUrl } from "@/lib/profile-image-url";
 
 /** Resolve role from session (lowercase). If missing from JWT, fetches from DB so manager access to admin routes works. */
 export async function resolveRole(session: Session | null): Promise<string> {
@@ -135,7 +136,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
           role: user.role,
-          image: user.profileImage ?? undefined,
+          image: publicProfileImageUrl(user.profileImage) ?? undefined,
         };
       },
     }),

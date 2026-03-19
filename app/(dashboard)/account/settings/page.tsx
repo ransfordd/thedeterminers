@@ -11,6 +11,7 @@ import { PersonalInfoForm } from "./PersonalInfoForm";
 import { ContactInfoForm } from "./ContactInfoForm";
 import { NextOfKinForm } from "./NextOfKinForm";
 import { DocumentUploadCard } from "./DocumentUploadCard";
+import { publicProfileImageUrl } from "@/lib/profile-image-url";
 
 export default async function AccountSettingsPage() {
   const session = await getServerSession(authOptions);
@@ -75,7 +76,7 @@ export default async function AccountSettingsPage() {
         icon={<i className="fas fa-cog" />}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ProfilePictureCard profileImagePath={user.profileImage} />
+        <ProfilePictureCard profileImagePath={publicProfileImageUrl(user.profileImage)} />
         <AccountInfoCard
           username={user.username}
           role={user.role}

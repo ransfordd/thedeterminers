@@ -26,6 +26,7 @@ function skipMaintenanceAndEarlyNext(pathname: string): boolean {
   return (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/uploads/") ||
     pathname === "/api/maintenance-status" ||
     pathname === "/login" ||
     pathname === "/maintenance" ||
