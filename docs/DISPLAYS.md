@@ -60,7 +60,7 @@ All dashboard pages use the shared layout: header (business name + “Susu Syste
 | Manual transactions   | `/admin/manual-transactions`| Create form: client, type (deposit, withdrawal, savings_withdrawal, emergency_withdrawal), amount, reference, description; list of last 50 manual transactions. |
 | User transaction history | `/admin/user-transactions` | Filter: client (dropdown; optional agent_id in URL filters clients by that agent), from/to date, type (all, susu, loan, manual). When client selected: **Client Information** card (name, email, phone, client code, agent name/code; optional profile image). **Susu Tracker** table (cycle, status, days collected/total, next due). Then transactions table (date, type, amount, reference, description). |
 | New loan product      | `/admin/products/new`      | Form: product name, code, description, min/max amount, interest rate and type, min/max term, processing fee, status. |
-| Send notification     | `/admin/notifications/send`| Form: recipient (user dropdown), type, title, message. Creates in-app notification. Submit button shows pending state and is disabled during send. |
+| Send notification     | `/admin/notifications/send`| Form: recipients = **one user** (dropdown), **all active users**, **all agents**, or **all clients**; type; title; message. Creates in-app notification(s) via batched `createMany`. Bulk send asks for browser confirmation. Submit button shows pending state and is disabled during send. |
 | System settings (edit)| `/admin/settings`          | Settings grouped by category; per-setting input (text/number/select/boolean) and Save. |
 
 ## Manager screens (implemented)
