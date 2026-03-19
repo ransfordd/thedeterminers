@@ -208,20 +208,28 @@ export async function recordCollection(
       }
 
       // "Susu collection recorded" notification (using recorded amount for display)
+      const amountStrSusu = formatAmountForDisplay(recordedSusuAmount);
       if (clientForNotif) {
-        const amountStr = formatAmountForDisplay(recordedSusuAmount);
         const ref = receipt ?? "";
         await prisma.notification.create({
           data: {
             userId: clientForNotif.userId,
             notificationType: "payment_recorded",
             title: "Susu collection recorded",
-            message: `Your Susu collection of GHS ${amountStr} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
+            message: `Your Susu collection of GHS ${amountStrSusu} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
           },
         });
         const susuSmsIds = [clientForNotif.userId, userId].filter((id): id is number => typeof id === "number" && id > 0);
-        await sendSmsToUserIds(prisma, susuSmsIds, `Susu collection GHS ${amountStr} recorded. - The Determiners`);
+        await sendSmsToUserIds(prisma, susuSmsIds, `Susu collection GHS ${amountStrSusu} recorded. - The Determiners`);
       }
+      await prisma.notification.create({
+        data: {
+          userId,
+          notificationType: "payment_recorded",
+          title: "Susu collection recorded",
+          message: `You recorded a Susu collection of GHS ${amountStrSusu}.`,
+        },
+      });
     }
 
     if (accountType === "loan" || accountType === "both") {
@@ -269,19 +277,27 @@ export async function recordCollection(
         where: { id: clientId },
         select: { userId: true },
       });
+      const loanAmountStr = formatAmountForDisplay(loanAmount);
       if (clientForLoanNotif) {
         const ref = receiptNumber ?? "";
-        const amountStr = formatAmountForDisplay(loanAmount);
         await prisma.notification.create({
           data: {
             userId: clientForLoanNotif.userId,
             notificationType: "payment_recorded",
             title: "Loan payment recorded",
-            message: `Your loan payment of GHS ${amountStr} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
+            message: `Your loan payment of GHS ${loanAmountStr} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
           },
         });
-        await sendSmsToUserIds(prisma, [clientForLoanNotif.userId], `Loan payment GHS ${amountStr} recorded. - The Determiners`);
+        await sendSmsToUserIds(prisma, [clientForLoanNotif.userId], `Loan payment GHS ${loanAmountStr} recorded. - The Determiners`);
       }
+      await prisma.notification.create({
+        data: {
+          userId,
+          notificationType: "payment_recorded",
+          title: "Loan payment recorded",
+          message: `You recorded a loan payment of GHS ${loanAmountStr}.`,
+        },
+      });
     }
 
     revalidatePath("/agent/collect");

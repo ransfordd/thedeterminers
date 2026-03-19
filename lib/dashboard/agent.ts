@@ -40,7 +40,6 @@ export async function getAgentDashboardData(userId: number) {
       where: {
         collectionDate: { gte: todayStart, lt: todayEnd },
         collectionStatus: "collected",
-        susuCycle: { clientId: { in: clientIds } },
         collectedById: agent.id,
       },
       _sum: { collectedAmount: true },
@@ -49,7 +48,6 @@ export async function getAgentDashboardData(userId: number) {
       where: {
         paymentDate: { gte: todayStart, lt: todayEnd },
         paymentStatus: "paid",
-        loan: { clientId: { in: clientIds } },
         collectedById: agent.id,
       },
       _sum: { amountPaid: true },
@@ -57,7 +55,6 @@ export async function getAgentDashboardData(userId: number) {
     prisma.dailyCollection.aggregate({
       where: {
         collectionStatus: "collected",
-        susuCycle: { clientId: { in: clientIds } },
         collectedById: agent.id,
       },
       _sum: { collectedAmount: true },
@@ -65,7 +62,6 @@ export async function getAgentDashboardData(userId: number) {
     prisma.loanPayment.aggregate({
       where: {
         paymentStatus: "paid",
-        loan: { clientId: { in: clientIds } },
         collectedById: agent.id,
       },
       _sum: { amountPaid: true },
@@ -110,6 +106,27 @@ export async function getAgentDashboardData(userId: number) {
   };
 }
 
+/** All active clients for the Record Payment dropdown (any agent can collect for any active client). */
+export async function getActiveClientsForCollect(): Promise<
+  { id: number; clientCode: string; name: string; dailyAmount: number; phone: string | null; email: string | null; depositType: string; agentCode: string }[]
+> {
+  const list = await prisma.client.findMany({
+    where: { status: "active" },
+    orderBy: [{ user: { firstName: "asc" } }, { user: { lastName: "asc" } }],
+    include: { user: true, agent: true },
+  });
+  return list.map((c) => ({
+    id: c.id,
+    clientCode: c.clientCode,
+    name: `${c.user.firstName} ${c.user.lastName}`,
+    dailyAmount: toNum(c.dailyDepositAmount),
+    phone: c.user.phone,
+    email: c.user.email,
+    depositType: c.depositType ?? "fixed_amount",
+    agentCode: c.agent?.agentCode ?? "",
+  }));
+}
+
 export type RecentCollectionItem = {
   id: number;
   type: "susu" | "loan";
@@ -129,7 +146,7 @@ export async function getAgentRecentCollections(
     prisma.dailyCollection.findMany({
       where: {
         collectionStatus: "collected",
-        susuCycle: { client: { agentId } },
+        collectedById: agentId,
       },
       include: {
         susuCycle: { include: { client: { include: { user: true } } } },
@@ -140,7 +157,7 @@ export async function getAgentRecentCollections(
     prisma.loanPayment.findMany({
       where: {
         paymentStatus: { in: ["paid", "partial"] },
-        loan: { client: { agentId } },
+        collectedById: agentId,
       },
       include: {
         loan: { include: { client: { include: { user: true } } } },

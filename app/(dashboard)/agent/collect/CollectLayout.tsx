@@ -67,7 +67,7 @@ export function CollectLayout({
           >
             {clients.length === 0 ? (
               <p className="text-gray-600 dark:text-gray-400 text-sm">
-                You have no assigned clients. Contact the administrator to get clients assigned.
+                No active clients in the system. Contact the administrator to add or activate clients.
               </p>
             ) : (
               <CollectForm

@@ -3,6 +3,7 @@ import type { Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity-log";
 import { normalizePhone } from "@/lib/sms";
 import { verifyImpersonationToken } from "@/lib/impersonate";
 import { getSecuritySettings } from "@/lib/system-settings";
@@ -140,6 +141,14 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ user }) {
+      if (user?.id) {
+        const userId = parseInt(user.id, 10);
+        const label = user.name ?? (user.email as string) ?? "User";
+        await logActivity(userId, "login", `User '${label}' logged into the system`);
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;

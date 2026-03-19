@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { getAgentDashboardData, getAgentRecentCollections } from "@/lib/dashboard";
+import { getAgentDashboardData, getAgentRecentCollections, getActiveClientsForCollect } from "@/lib/dashboard";
 import { CollectLayout } from "./CollectLayout";
 
 export default async function AgentCollectPage({
@@ -20,8 +20,12 @@ export default async function AgentCollectPage({
   let data: Awaited<ReturnType<typeof getAgentDashboardData>> = null;
   let recentCollections: Awaited<ReturnType<typeof getAgentRecentCollections>> = [];
 
+  let activeClientsForCollect: Awaited<ReturnType<typeof getActiveClientsForCollect>> = [];
   try {
-    data = await getAgentDashboardData(uid);
+    [data, activeClientsForCollect] = await Promise.all([
+      getAgentDashboardData(uid),
+      getActiveClientsForCollect(),
+    ]);
     if (data?.agent?.id) {
       recentCollections = await getAgentRecentCollections(data.agent.id, 15);
     }
@@ -50,16 +54,7 @@ export default async function AgentCollectPage({
     );
   }
 
-  const clients = data.assignedClients.map((c) => ({
-    id: c.id,
-    clientCode: c.clientCode,
-    name: `${c.firstName} ${c.lastName}`,
-    dailyAmount: c.dailyDepositAmount,
-    phone: c.phone,
-    email: c.email,
-    depositType: c.depositType ?? "fixed_amount",
-    agentCode: data!.agentCode,
-  }));
+  const clients = activeClientsForCollect;
 
   const recentItems = recentCollections.map((r) => ({
     id: r.id,
@@ -72,7 +67,7 @@ export default async function AgentCollectPage({
   }));
 
   const clientIdParam = params?.client_id ? parseInt(params.client_id, 10) : undefined;
-  const isValidClient = clientIdParam != null && !Number.isNaN(clientIdParam) && data.assignedClients.some((c) => c.id === clientIdParam);
+  const isValidClient = clientIdParam != null && !Number.isNaN(clientIdParam) && clients.some((c) => c.id === clientIdParam);
   const initialClientId = isValidClient ? clientIdParam : undefined;
   const initialAccountType = params?.account_type === "loan" || params?.account_type === "both" ? params.account_type : "susu";
   const initialSusuAmount = params?.amount != null && params.amount !== "" ? parseFloat(params.amount) : undefined;

@@ -36,6 +36,11 @@ function skipMaintenanceAndEarlyNext(pathname: string): boolean {
   );
 }
 
+/** Public site paths that remain accessible when maintenance mode is on (match PHP behaviour). */
+function isPublicPath(pathname: string): boolean {
+  return pathname === "/" || pathname === "/about" || pathname === "/contact" || pathname === "/home";
+}
+
 export default async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
@@ -58,6 +63,9 @@ export default async function proxy(request: NextRequest) {
       if (res.ok) {
         const data = await res.json();
         if (data.maintenanceMode) {
+          if (isPublicPath(path)) {
+            return NextResponse.next();
+          }
           return NextResponse.redirect(new URL("/maintenance", request.url));
         }
       }
