@@ -66,7 +66,8 @@ export async function sendSms(recipients: string[], message: string): Promise<bo
 }
 
 /**
- * Send SMS to users by ID. Uses User.phone; for users who are clients, falls back to
+ * Send SMS to users by ID. Only active users with role `client` receive SMS; agent,
+ * business_admin, and manager IDs are ignored. Uses User.phone; falls back to
  * Client.emergencyContactPhone or Client.nextOfKinPhone when User.phone is empty.
  * Fire-and-forget: errors are logged, not thrown.
  */
@@ -81,7 +82,7 @@ export async function sendSmsToUserIds(
   try {
     const [users, clients] = await Promise.all([
       prisma.user.findMany({
-        where: { id: { in: userIds }, status: "active" },
+        where: { id: { in: userIds }, status: "active", role: "client" },
         select: { id: true, phone: true },
       }),
       prisma.client.findMany({

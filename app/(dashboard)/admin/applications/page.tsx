@@ -36,6 +36,11 @@ export default async function AdminApplicationsPage() {
         icon={<i className="fas fa-file-alt" />}
         backHref={backHref}
         variant="orange"
+        primaryAction={{
+          href: "/admin/applications/new",
+          label: "Apply for client",
+          icon: <i className="fas fa-plus" />,
+        }}
       />
       <ModernCard
         title="All Applications"

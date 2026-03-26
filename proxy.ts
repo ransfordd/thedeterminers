@@ -109,7 +109,8 @@ export default async function proxy(request: NextRequest) {
     path.startsWith("/admin/agents") ||
     path.startsWith("/admin/clients") ||
     path.startsWith("/admin/pending-transfers") ||
-    path.startsWith("/admin/notifications");
+    path.startsWith("/admin/notifications") ||
+    path.startsWith("/admin/about-team");
 
   if (path.startsWith("/admin") && role !== "business_admin" && !(role === "manager" && managerCanAccessAdminPath)) {
     return NextResponse.redirect(new URL(redirectPath, request.url));

@@ -18,7 +18,9 @@ const adminLinks: SidebarLink[] = [
   { href: "/admin/emergency-withdrawals", label: "Emergency Withdrawals", icon: "fa-exclamation-triangle" },
   { href: "/admin/reports", label: "Financial Reports", icon: "fa-chart-bar" },
   { href: "/admin/revenue", label: "Revenue Dashboard", icon: "fa-chart-line" },
-  { href: "/admin/agent-reports", label: "Agent Reports", icon: "fa-user-chart" },
+    { href: "/admin/agent-reports", label: "Agent Reports", icon: "fa-user-chart" },
+  { href: "/admin/about-team", label: "About team", icon: "fa-users" },
+  { href: "/admin/data-retention", label: "Delete client data", icon: "fa-user-slash" },
   { href: "/admin/settings", label: "System Settings", icon: "fa-cog" },
 ];
 

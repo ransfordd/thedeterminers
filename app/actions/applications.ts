@@ -158,6 +158,7 @@ export async function createLoanApplication(
   revalidatePath("/agent/applications");
   revalidatePath("/agent/applications/new");
   revalidatePath("/admin/applications");
+  revalidatePath("/admin/applications/new");
   revalidatePath("/client/apply-loan");
   return { success: true, applicationNumber: appNumber };
 }

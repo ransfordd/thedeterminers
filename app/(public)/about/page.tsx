@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { getAboutTeamMembers } from "@/lib/about-team";
 import { getBusinessInfoFromDb } from "@/lib/business-settings";
 import { AboutHeroSlider } from "@/components/public/AboutHeroSlider";
 
@@ -41,33 +42,6 @@ const VALUES = [
   },
 ];
 
-const TEAM = [
-  {
-    photo: "/assets/images/About-side/man1.jpg",
-    name: "Kwame Asante",
-    role: "Chief Executive Officer",
-    bio: "With over 15 years in financial services, Kwame leads our vision of making financial inclusion a reality for all Ghanaians.",
-  },
-  {
-    photo: "/assets/images/About-side/man2.jpg",
-    name: "Ama Serwaa",
-    role: "Chief Technology Officer",
-    bio: "Ama brings her expertise in fintech innovation to ensure our platform remains secure, user-friendly, and cutting-edge.",
-  },
-  {
-    photo: "/assets/images/About-side/man3.jpg",
-    name: "Kofi Mensah",
-    role: "Head of Operations",
-    bio: "Kofi ensures our operations run smoothly, maintaining the highest standards of service delivery and client satisfaction.",
-  },
-  {
-    photo: "/assets/images/About-side/man4.jpg",
-    name: "Efua Adjei",
-    role: "Community Relations Manager",
-    bio: "Efua builds and maintains relationships with our community partners, ensuring we stay connected to the people we serve.",
-  },
-];
-
 const STATS = [
   { value: "10,000+", label: "Active Clients" },
   { value: "GHS 50M+", label: "Total Transactions" },
@@ -94,6 +68,7 @@ const AWARDS = [
 
 export default async function AboutPage() {
   const businessInfo = await getBusinessInfoFromDb();
+  const team = await getAboutTeamMembers();
   return (
     <div>
       <AboutHeroSlider businessInfo={businessInfo} />
@@ -191,14 +166,14 @@ export default async function AboutPage() {
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {TEAM.map((m) => (
+            {team.map((m) => (
               <div
-                key={m.name}
+                key={m.id}
                 className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 text-center"
               >
                 <div className="relative aspect-square">
                   <Image
-                    src={m.photo}
+                    src={m.photoPath}
                     alt={m.name}
                     fill
                     className="object-cover"
@@ -210,7 +185,7 @@ export default async function AboutPage() {
                     {m.name}
                   </div>
                   <div className="text-sm text-indigo-600 dark:text-indigo-400 mb-2">
-                    {m.role}
+                    {m.title}
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {m.bio}

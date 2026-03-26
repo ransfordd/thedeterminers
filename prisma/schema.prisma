@@ -229,6 +229,23 @@ model User {
   manualTransactionsProcessed ManualTransaction[]
   userActivity UserActivity[]
   userDocuments UserDocument[]
+  adminDataRetentionLogs AdminDataRetentionLog[]
+}
+
+model AdminDataRetentionLog {
+  id              Int      @id @default(autoincrement())
+  action          String   @db.VarChar(50)
+  performedById   Int      @map("performed_by_id")
+  targetUserId    Int?     @map("target_user_id")
+  targetClientId  Int?     @map("target_client_id")
+  details         String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  performedBy User @relation(fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@index([performedById])
+  @@index([createdAt])
+  @@map("admin_data_retention_log")
 }
 
 model UserActivity {
@@ -631,4 +648,18 @@ model EmergencyWithdrawalTransaction {
   createdAt        DateTime @default(now()) @map("created_at")
 
   request EmergencyWithdrawalRequest @relation(fields: [requestId], references: [id])
+}
+
+model AboutTeamMember {
+  id        Int      @id @default(autoincrement())
+  sortOrder Int      @default(0) @map("sort_order")
+  photoPath String   @map("photo_path") @db.VarChar(500)
+  name      String   @db.VarChar(150)
+  title     String   @db.VarChar(150)
+  bio       String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([sortOrder])
+  @@map("about_team_member")
 }
