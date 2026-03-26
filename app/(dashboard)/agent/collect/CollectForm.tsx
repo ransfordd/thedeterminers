@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { recordCollection, type CollectState } from "@/app/actions/collect";
@@ -9,7 +9,13 @@ import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
 
 const initialState: CollectState = {};
 
-type ClientOption = { id: number; clientCode: string; name: string; dailyAmount: number };
+type ClientOption = {
+  id: number;
+  clientCode: string;
+  name: string;
+  dailyAmount: number;
+  depositType: string;
+};
 
 const inputClass =
   "login-input w-full border border-[#e1e5e9] rounded-[10px] px-3 py-2.5 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/20 outline-none transition-all";
@@ -47,12 +53,44 @@ export function CollectForm({
   const [clientId, setClientId] = useState<string>(initialClientId != null ? String(initialClientId) : "");
   const today = new Date().toISOString().slice(0, 10);
 
+  const toCents = (amount: number) => Math.round(amount * 100);
+  const fromCents = (cents: number) => cents / 100;
+
+  const handleBeforeSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (!(accountType === "susu" || accountType === "both")) return;
+    const selectedClient = clients.find((c) => String(c.id) === clientId);
+    if (!selectedClient || selectedClient.depositType !== "fixed_amount") return;
+
+    const formData = new FormData(event.currentTarget);
+    const susuAmount = parseFloat(String(formData.get("susuAmount") ?? "0"));
+    if (!Number.isFinite(susuAmount) || susuAmount <= 0) return;
+
+    const dailyAmountCents = toCents(selectedClient.dailyAmount);
+    const susuAmountCents = toCents(susuAmount);
+    if (dailyAmountCents <= 0) return;
+
+    const remainderCents = susuAmountCents % dailyAmountCents;
+    if (remainderCents === 0) return;
+
+    const cyclePart = fromCents(susuAmountCents - remainderCents);
+    const savingsPart = fromCents(remainderCents);
+    const proceed = window.confirm(
+      `This client saves GHS ${selectedClient.dailyAmount.toFixed(2)} per day.\n` +
+        `You entered GHS ${susuAmount.toFixed(2)}.\n\n` +
+        `GHS ${cyclePart.toFixed(2)} will be recorded into the Susu cycle, and ` +
+        `GHS ${savingsPart.toFixed(2)} will go to savings.\n\nContinue?`
+    );
+    if (!proceed) {
+      event.preventDefault();
+    }
+  };
+
   useEffect(() => {
     onClientSelect?.(clientId ? parseInt(clientId, 10) : null);
   }, [clientId, onClientSelect]);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} onSubmit={handleBeforeSubmit} className="space-y-4">
       {state?.error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 text-sm">
           {state.error}

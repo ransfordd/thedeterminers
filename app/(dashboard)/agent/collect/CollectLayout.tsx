@@ -47,6 +47,7 @@ export function CollectLayout({
     clientCode: c.clientCode,
     name: c.name,
     dailyAmount: c.dailyAmount,
+    depositType: c.depositType,
   }));
 
   return (

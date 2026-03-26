@@ -40,10 +40,18 @@ export default async function ManagerPaymentsPage() {
     }),
   ]);
 
+  const clientDepositMeta = await prisma.client.findMany({
+    where: { id: { in: clientsList.map((c) => c.id) } },
+    select: { id: true, depositType: true },
+  });
+  const depositTypeByClientId = new Map(clientDepositMeta.map((c) => [c.id, c.depositType]));
+
   const clients = clientsList.map((c) => ({
     id: c.id,
     clientCode: c.clientCode,
     clientName: `${c.firstName} ${c.lastName}`,
+    dailyDepositAmount: Number(c.dailyDepositAmount),
+    depositType: depositTypeByClientId.get(c.id) ?? "fixed_amount",
   }));
   const loans = activeLoans.map((l) => ({
     id: l.id,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useActionState } from "react";
 import { recordAdminPayment, type AdminPaymentState } from "@/app/actions/admin-payments";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
@@ -8,7 +8,13 @@ import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
 
 const initialState: AdminPaymentState = {};
 
-type ClientOption = { id: number; clientCode: string; clientName: string };
+type ClientOption = {
+  id: number;
+  clientCode: string;
+  clientName: string;
+  dailyDepositAmount: number;
+  depositType: string;
+};
 type LoanOption = { id: number; loanNumber: string; clientName: string; currentBalance: number };
 
 export function PaymentForm({
@@ -24,8 +30,38 @@ export function PaymentForm({
   const [clientId, setClientId] = useState<string>("");
   const today = new Date().toISOString().slice(0, 10);
 
+  const toCents = (amount: number) => Math.round(amount * 100);
+  const fromCents = (cents: number) => cents / 100;
+
+  const handleBeforeSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (paymentType !== "susu_collection") return;
+    const selectedClient = clients.find((c) => String(c.id) === clientId);
+    if (!selectedClient || selectedClient.depositType !== "fixed_amount") return;
+
+    const formData = new FormData(event.currentTarget);
+    const amount = parseFloat(String(formData.get("amount") ?? "0"));
+    if (!Number.isFinite(amount) || amount <= 0) return;
+
+    const dailyAmountCents = toCents(selectedClient.dailyDepositAmount);
+    const amountCents = toCents(amount);
+    if (dailyAmountCents <= 0) return;
+
+    const remainderCents = amountCents % dailyAmountCents;
+    if (remainderCents === 0) return;
+
+    const cyclePart = fromCents(amountCents - remainderCents);
+    const savingsPart = fromCents(remainderCents);
+    const proceed = window.confirm(
+      `This client saves GHS ${selectedClient.dailyDepositAmount.toFixed(2)} per day.\n` +
+        `You entered GHS ${amount.toFixed(2)}.\n\n` +
+        `GHS ${cyclePart.toFixed(2)} will be recorded into the Susu cycle, and ` +
+        `GHS ${savingsPart.toFixed(2)} will go to savings.\n\nContinue?`
+    );
+    if (!proceed) event.preventDefault();
+  };
+
   return (
-    <form action={formAction} className="space-y-4 max-w-xl">
+    <form action={formAction} onSubmit={handleBeforeSubmit} className="space-y-4 max-w-xl">
       <input type="hidden" name="paymentType" value={paymentType} />
       {state?.error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 text-sm">
