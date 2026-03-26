@@ -374,8 +374,8 @@ model LoanProduct {
   productName       String        @map("product_name") @db.VarChar(100)
   productCode       String        @unique @map("product_code") @db.VarChar(20)
   description       String?       @db.Text
-  minAmount         Decimal       @map("min_amount") @db.Decimal(10, 2)
-  maxAmount         Decimal       @map("max_amount") @db.Decimal(10, 2)
+  minAmount         Decimal       @map("min_amount") @db.Decimal(18, 2)
+  maxAmount         Decimal       @map("max_amount") @db.Decimal(18, 2)
   interestRate      Decimal       @map("interest_rate") @db.Decimal(5, 2)
   interestType      InterestType  @default(flat) @map("interest_type")
   minTermMonths     Int           @default(1) @map("min_term_months")
@@ -394,7 +394,7 @@ model LoanApplication {
   applicationNumber   String            @unique @map("application_number") @db.VarChar(50)
   clientId            Int               @map("client_id")
   loanProductId        Int               @map("loan_product_id")
-  requestedAmount     Decimal           @map("requested_amount") @db.Decimal(10, 2)
+  requestedAmount     Decimal           @map("requested_amount") @db.Decimal(18, 2)
   requestedTermMonths  Int               @map("requested_term_months")
   purpose             String            @db.Text
   guarantorName       String?           @map("guarantor_name") @db.VarChar(100)
@@ -408,7 +408,7 @@ model LoanApplication {
   reviewedById        Int?              @map("reviewed_by")
   reviewDate          DateTime?          @map("review_date") @db.Date
   reviewNotes         String?           @map("review_notes") @db.Text
-  approvedAmount      Decimal?           @map("approved_amount") @db.Decimal(10, 2)
+  approvedAmount      Decimal?           @map("approved_amount") @db.Decimal(18, 2)
   approvedTermMonths  Int?              @map("approved_term_months")
   approvalDate        DateTime?         @map("approval_date") @db.Date
   createdAt           DateTime          @default(now()) @map("created_at")
@@ -425,15 +425,15 @@ model Loan {
   applicationId       Int                @unique @map("application_id")
   clientId            Int                @map("client_id")
   loanProductId       Int                @map("loan_product_id")
-  principalAmount     Decimal            @map("principal_amount") @db.Decimal(10, 2)
+  principalAmount     Decimal            @map("principal_amount") @db.Decimal(18, 2)
   interestRate        Decimal            @map("interest_rate") @db.Decimal(5, 2)
   termMonths          Int                @map("term_months")
-  monthlyPayment      Decimal            @map("monthly_payment") @db.Decimal(10, 2)
-  totalRepaymentAmount Decimal           @map("total_repayment_amount") @db.Decimal(10, 2)
+  monthlyPayment      Decimal            @map("monthly_payment") @db.Decimal(18, 2)
+  totalRepaymentAmount Decimal           @map("total_repayment_amount") @db.Decimal(18, 2)
   disbursementDate    DateTime           @map("disbursement_date") @db.Date
   maturityDate        DateTime           @map("maturity_date") @db.Date
-  currentBalance      Decimal            @map("current_balance") @db.Decimal(10, 2)
-  totalPaid           Decimal            @default(0) @map("total_paid") @db.Decimal(10, 2)
+  currentBalance      Decimal            @map("current_balance") @db.Decimal(18, 2)
+  totalPaid           Decimal            @default(0) @map("total_paid") @db.Decimal(18, 2)
   paymentsMade        Int                @default(0) @map("payments_made")
   lastPaymentDate     DateTime?          @map("last_payment_date") @db.Date
   nextPaymentDate     DateTime?          @map("next_payment_date") @db.Date
@@ -455,14 +455,14 @@ model LoanPayment {
   loanId         Int            @map("loan_id")
   paymentNumber  Int            @map("payment_number")
   dueDate        DateTime      @map("due_date") @db.Date
-  principalAmount Decimal      @map("principal_amount") @db.Decimal(10, 2)
-  interestAmount  Decimal      @map("interest_amount") @db.Decimal(10, 2)
-  totalDue       Decimal       @map("total_due") @db.Decimal(10, 2)
-  amountPaid     Decimal       @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  principalAmount Decimal      @map("principal_amount") @db.Decimal(18, 2)
+  interestAmount  Decimal      @map("interest_amount") @db.Decimal(18, 2)
+  totalDue       Decimal       @map("total_due") @db.Decimal(18, 2)
+  amountPaid     Decimal       @default(0) @map("amount_paid") @db.Decimal(18, 2)
   paymentDate    DateTime?     @map("payment_date") @db.Date
   paymentStatus  PaymentStatus @default(pending) @map("payment_status")
   daysOverdue    Int           @default(0) @map("days_overdue")
-  penaltyAmount  Decimal       @default(0) @map("penalty_amount") @db.Decimal(10, 2)
+  penaltyAmount  Decimal       @default(0) @map("penalty_amount") @db.Decimal(18, 2)
   collectedById  Int?          @map("collected_by")
   paymentMethod  PaymentMethod? @map("payment_method")
   receiptNumber  String?       @map("receipt_number") @db.VarChar(50)
@@ -600,7 +600,7 @@ model LoanDeductionNotification {
   id                Int                      @id @default(autoincrement())
   clientId          Int                      @map("client_id")
   loanId            Int                      @map("loan_id")
-  amount            Decimal                  @db.Decimal(10, 2)
+  amount            Decimal                  @db.Decimal(18, 2)
   notificationSentAt DateTime                @default(now()) @map("notification_sent_at")
   autoDeductionAt   DateTime?                @map("auto_deduction_at")
   status            DeductionNotificationStatus @default(pending)

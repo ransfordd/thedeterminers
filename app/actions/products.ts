@@ -8,6 +8,40 @@ import { Decimal } from "@prisma/client/runtime/library";
 
 export type ProductState = { success?: boolean; error?: string };
 
+/** Aligns with @db.Decimal(18, 2) — values must fit Postgres NUMERIC(18,2). */
+const MAX_MONEY = new Decimal("9999999999999999.99");
+const MAX_RATE = new Decimal("999.99");
+
+function validateProductNumbers(
+  minAmount: number,
+  maxAmount: number,
+  interestRate: number,
+  processingFeeRate: number,
+  minTermMonths: number,
+  maxTermMonths: number,
+): string | null {
+  if (
+    !Number.isFinite(minAmount)
+    || !Number.isFinite(maxAmount)
+    || !Number.isFinite(interestRate)
+    || !Number.isFinite(processingFeeRate)
+    || !Number.isFinite(minTermMonths)
+    || !Number.isFinite(maxTermMonths)
+  ) {
+    return "Invalid numeric values";
+  }
+  if (minAmount < 0 || maxAmount < minAmount) return "Invalid amount range";
+  if (minTermMonths < 1 || maxTermMonths < minTermMonths) return "Invalid term range";
+  const dMin = new Decimal(minAmount);
+  const dMax = new Decimal(maxAmount);
+  if (dMin.gt(MAX_MONEY) || dMax.gt(MAX_MONEY)) return "Amount exceeds maximum allowed";
+  const i = new Decimal(interestRate);
+  const p = new Decimal(processingFeeRate);
+  if (i.lt(0) || i.gt(MAX_RATE)) return "Interest rate must be between 0 and 999.99";
+  if (p.lt(0) || p.gt(MAX_RATE)) return "Processing fee rate must be between 0 and 999.99";
+  return null;
+}
+
 export async function createProduct(_prev: ProductState, formData: FormData): Promise<ProductState> {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Not authenticated" };
@@ -26,8 +60,15 @@ export async function createProduct(_prev: ProductState, formData: FormData): Pr
   const status = ((formData.get("status") as string) === "inactive" ? "inactive" : "active") as "active" | "inactive";
 
   if (!productName || !productCode) return { error: "Product name and code are required" };
-  if (minAmount < 0 || maxAmount < minAmount) return { error: "Invalid amount range" };
-  if (minTermMonths < 1 || maxTermMonths < minTermMonths) return { error: "Invalid term range" };
+  const numErr = validateProductNumbers(
+    minAmount,
+    maxAmount,
+    interestRate,
+    processingFeeRate,
+    minTermMonths,
+    maxTermMonths,
+  );
+  if (numErr) return { error: numErr };
 
   const existing = await prisma.loanProduct.findUnique({ where: { productCode } });
   if (existing) return { error: "Product code already in use" };
@@ -89,8 +130,15 @@ export async function updateProduct(_prev: ProductState, formData: FormData): Pr
   const status = ((formData.get("status") as string) === "inactive" ? "inactive" : "active") as "active" | "inactive";
 
   if (!productName || !productCode) return { error: "Product name and code are required" };
-  if (minAmount < 0 || maxAmount < minAmount) return { error: "Invalid amount range" };
-  if (minTermMonths < 1 || maxTermMonths < minTermMonths) return { error: "Invalid term range" };
+  const numErr = validateProductNumbers(
+    minAmount,
+    maxAmount,
+    interestRate,
+    processingFeeRate,
+    minTermMonths,
+    maxTermMonths,
+  );
+  if (numErr) return { error: numErr };
 
   const existing = await prisma.loanProduct.findUnique({ where: { id: productId } });
   if (!existing) return { error: "Product not found" };
