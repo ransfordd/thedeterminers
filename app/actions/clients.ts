@@ -31,7 +31,7 @@ export async function createClient(
   const phone = (formData.get("phone") as string)?.trim() || "";
   const password = formData.get("password") as string;
   const agentIdRaw = formData.get("agentId") as string;
-  const dailyDepositAmountRaw = formData.get("dailyDepositAmount") as string;
+  const dailyDepositAmountRaw = (formData.get("dailyDepositAmount") as string)?.trim() ?? "";
   const depositType = (formData.get("depositType") as "fixed_amount" | "flexible_amount") || "fixed_amount";
   const preferredCollectionTime = (formData.get("preferredCollectionTime") as string)?.trim() || null;
 
@@ -46,10 +46,11 @@ export async function createClient(
   if (!agentId || isNaN(agentId)) {
     return { error: "Please select an agent." };
   }
-  const dailyDepositAmount = dailyDepositAmountRaw ? parseFloat(dailyDepositAmountRaw) : NaN;
-  if (isNaN(dailyDepositAmount) || dailyDepositAmount < 0) {
+  const parsedDailyDepositAmount = dailyDepositAmountRaw ? Number(dailyDepositAmountRaw) : NaN;
+  if (!Number.isFinite(parsedDailyDepositAmount) || parsedDailyDepositAmount < 0) {
     return { error: "Daily deposit amount must be a valid number (e.g. 20)." };
   }
+  const dailyDepositAmount = Number(parsedDailyDepositAmount.toFixed(2));
 
   const existingUser = await prisma.user.findFirst({
     where: { OR: [{ email }, { username }] },
@@ -195,13 +196,16 @@ export async function updateClient(
   const agentIdRaw = (formData.get("agentId") as string)?.trim();
   const agentIdParsed = agentIdRaw ? parseInt(agentIdRaw, 10) : NaN;
   const agentId = (agentIdRaw && !isNaN(agentIdParsed)) ? agentIdParsed : null;
-  const dailyDepositAmountRaw = formData.get("dailyDepositAmount") as string;
-  const dailyDepositAmount = dailyDepositAmountRaw ? parseFloat(dailyDepositAmountRaw) : NaN;
+  const dailyDepositAmountRaw = (formData.get("dailyDepositAmount") as string)?.trim() ?? "";
+  const parsedDailyDepositAmount = dailyDepositAmountRaw ? Number(dailyDepositAmountRaw) : NaN;
   const depositType = (formData.get("depositType") as "fixed_amount" | "flexible_amount") || "fixed_amount";
   const preferredCollectionTime = (formData.get("preferredCollectionTime") as string)?.trim() || null;
 
   if (!firstName || !lastName || !email) return { error: "First name, last name, and email are required." };
-  if (isNaN(dailyDepositAmount) || dailyDepositAmount < 0) return { error: "Daily deposit amount must be a valid number." };
+  if (!Number.isFinite(parsedDailyDepositAmount) || parsedDailyDepositAmount < 0) {
+    return { error: "Daily deposit amount must be a valid number." };
+  }
+  const dailyDepositAmount = Number(parsedDailyDepositAmount.toFixed(2));
 
   const client = await prisma.client.findUnique({ where: { id: clientId }, include: { user: true } });
   if (!client) return { error: "Client not found." };

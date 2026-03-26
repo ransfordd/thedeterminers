@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { sendSmsToUserIds } from "@/lib/sms";
+import { buildPremiumSms, sendSmsToUserIds } from "@/lib/sms";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export type WithdrawalState = { success?: boolean; error?: string; reference?: string };
@@ -172,7 +172,15 @@ export async function requestEmergencyWithdrawal(
       })),
     }).catch(() => { /* ignore */ });
     const emergencySmsIds = [userId, ...adminManagerUsers.map((u) => u.id)];
-    await sendSmsToUserIds(prisma, emergencySmsIds, `Emergency withdrawal GHS ${requestedAmount.toFixed(2)} requested by ${clientName}. - The Determiners`);
+    await sendSmsToUserIds(
+      prisma,
+      emergencySmsIds,
+      await buildPremiumSms({
+        clientName,
+        eventLine: `Emergency withdrawal request of GHS ${requestedAmount.toFixed(2)} has been submitted by ${clientName}.`,
+        reference: `EWR-${cycleId}-${Date.now()}`,
+      })
+    );
   }
 
   revalidatePath("/client");

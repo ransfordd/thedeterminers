@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { sendSmsToUserIds } from "@/lib/sms";
+import { buildPremiumSms, sendSmsToUserIds } from "@/lib/sms";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export type ApplicationState = { success?: boolean; error?: string; applicationNumber?: string };
@@ -152,7 +152,12 @@ export async function createLoanApplication(
   await sendSmsToUserIds(
     prisma,
     smsUserIds,
-    `Loan application GHS ${amountStr} from ${clientName}. Ref: ${appNumber}. - The Determiners`
+    await buildPremiumSms({
+      clientName,
+      eventLine: `Loan application for GHS ${amountStr} has been submitted for ${clientName} and is under review.`,
+      reference: appNumber,
+      date: appliedDate,
+    })
   );
 
   revalidatePath("/agent/applications");
@@ -230,7 +235,16 @@ export async function approveLoanApplication(
   await prisma.notification.createMany({
     data: notifications.map((n) => ({ userId: n.userId, notificationType: "system_alert", title: n.title, message: n.message })),
   });
-  await sendSmsToUserIds(prisma, notifications.map((n) => n.userId), `Loan approved: ${clientName}, GHS ${amountStr}. Ref ${appNumber}. - The Determiners`);
+  await sendSmsToUserIds(
+    prisma,
+    notifications.map((n) => n.userId),
+    await buildPremiumSms({
+      clientName,
+      eventLine: `Loan application for ${clientName} has been approved for GHS ${amountStr}.`,
+      reference: appNumber,
+      date: now,
+    })
+  );
 
   revalidatePath("/admin/applications");
   revalidatePath(`/admin/applications/${applicationId}`);
@@ -296,7 +310,16 @@ export async function rejectLoanApplication(
   await prisma.notification.createMany({
     data: notifications.map((n) => ({ userId: n.userId, notificationType: "system_alert", title: n.title, message: n.message })),
   });
-  await sendSmsToUserIds(prisma, notifications.map((n) => n.userId), `Loan application #${appNumber} for ${clientName} has been declined. - The Determiners`);
+  await sendSmsToUserIds(
+    prisma,
+    notifications.map((n) => n.userId),
+    await buildPremiumSms({
+      clientName,
+      eventLine: `Loan application for ${clientName} has been declined.`,
+      reference: appNumber,
+      date: now,
+    })
+  );
 
   revalidatePath("/admin/applications");
   revalidatePath(`/admin/applications/${applicationId}`);

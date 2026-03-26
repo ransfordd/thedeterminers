@@ -8,7 +8,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { ensureSusuCycleForMonth } from "@/lib/susu-cycle";
 import { formatAmountForDisplay } from "@/lib/currency";
 import { creditClientSavings } from "@/lib/savings";
-import { sendSmsToUserIds } from "@/lib/sms";
+import { buildPremiumSms, buildRichCycleSms, sendSmsToUserIds } from "@/lib/sms";
 
 export type CollectState = { success?: boolean; error?: string };
 
@@ -35,7 +35,10 @@ export async function recordCollection(
   if (role !== "agent" && role !== "business_admin") return { error: "Not authorized" };
 
   const userId = parseInt((session.user as { id?: string }).id ?? "0", 10);
-  const agent = await prisma.agent.findFirst({ where: { userId } });
+  const agent = await prisma.agent.findFirst({
+    where: { userId },
+    include: { user: { select: { firstName: true, lastName: true } } },
+  });
   if (!agent) return { error: "Agent record not found" };
 
   const clientId = parseInt((formData.get("clientId") as string) ?? "0", 10);
@@ -69,19 +72,50 @@ export async function recordCollection(
         if (!cycle) return { error: "Cycle not found" };
       }
 
+      const clientForNotif = await prisma.client.findUnique({
+        where: { id: clientId },
+        select: {
+          userId: true,
+          dailyDepositAmount: true,
+          depositType: true,
+          user: { select: { firstName: true, lastName: true } },
+        },
+      });
+
+      const cycleLength = getCycleLength(cycle.startDate, cycle.endDate);
+      const desiredDailyCents = clientForNotif ? toCents(Number(clientForNotif.dailyDepositAmount)) : null;
+      const currentDailyCents = toCents(Number(cycle.dailyAmount));
+      const desiredFlexible = clientForNotif ? clientForNotif.depositType === "flexible_amount" : cycle.isFlexible;
+
+      if (
+        desiredDailyCents &&
+        desiredDailyCents > 0 &&
+        (desiredDailyCents !== currentDailyCents || desiredFlexible !== cycle.isFlexible)
+      ) {
+        const syncedDailyAmount = new Decimal(fromCents(desiredDailyCents));
+        cycle = await prisma.susuCycle.update({
+          where: { id: cycle.id },
+          data: {
+            dailyAmount: syncedDailyAmount,
+            totalAmount: syncedDailyAmount.mul(cycleLength),
+            isFlexible: desiredFlexible,
+          },
+        });
+        console.info("[SUSU] Synced active cycle terms from client profile", {
+          clientId,
+          cycleId: cycle.id,
+          dailyAmount: fromCents(desiredDailyCents),
+          isFlexible: desiredFlexible,
+        });
+      }
+
       const existing = await prisma.dailyCollection.findMany({
         where: { susuCycleId: cycle.id, collectionStatus: "collected" },
         select: { dayNumber: true },
       });
       const usedDays = new Set(existing.map((r) => r.dayNumber));
-      const cycleLength = getCycleLength(cycle.startDate, cycle.endDate);
       const dailyAmountNum = Number(cycle.dailyAmount);
       const isFlexible = "isFlexible" in cycle && cycle.isFlexible;
-
-      const clientForNotif = await prisma.client.findUnique({
-        where: { id: clientId },
-        select: { userId: true },
-      });
 
       // Cycle already full: credit full amount to savings and notify
       if (usedDays.size === cycleLength) {
@@ -114,11 +148,32 @@ export async function recordCollection(
         revalidatePath("/agent/collect");
         revalidatePath("/agent");
         revalidatePath("/agent/transaction-history");
+        const savingsAccount = await prisma.savingsAccount.findUnique({
+          where: { clientId },
+          select: { balance: true },
+        });
+        const balanceLine = savingsAccount
+          ? `Savings balance: GHS ${formatAmountForDisplay(Number(savingsAccount.balance))}.`
+          : null;
+        await sendSmsToUserIds(
+          prisma,
+          [clientForNotif?.userId ?? 0],
+          await buildPremiumSms({
+            clientName: `${clientForNotif?.user.firstName ?? ""} ${clientForNotif?.user.lastName ?? ""}`.trim(),
+            eventLine: `Your Susu cycle is complete. GHS ${amtStr} has been credited to your savings account.`,
+            reference: receiptNumber ?? `COL-${clientId}-${Date.now()}`,
+            date: new Date(),
+            balanceLine,
+          })
+        );
         return { success: true };
       }
 
       let recordedSusuAmount: number;
       const receipt = receiptNumber ?? `RCPT-SU-${Date.now()}-${clientId}`;
+      const recordedAt = new Date();
+      let creditedToSavings = false;
+      let savingsCreditedAmount = 0;
 
       if (isFlexible) {
         // Flexible: one payment = one day, record the full amount for that day
@@ -137,7 +192,7 @@ export async function recordCollection(
             expectedAmount: new Decimal(susuAmount),
             collectedAmount: new Decimal(susuAmount),
             collectionStatus: "collected",
-            collectionTime: new Date(),
+            collectionTime: recordedAt,
             collectedById: agent.id,
             receiptNumber: receipt,
             notes,
@@ -178,7 +233,7 @@ export async function recordCollection(
                 expectedAmount: cycle.dailyAmount,
                 collectedAmount: cycle.dailyAmount,
                 collectionStatus: "collected",
-                collectionTime: new Date(),
+                collectionTime: recordedAt,
                 collectedById: agent.id,
                 receiptNumber: receipt,
                 notes,
@@ -189,6 +244,8 @@ export async function recordCollection(
         recordedSusuAmount = susuPart;
 
         if (toSavings > 0) {
+          creditedToSavings = true;
+          savingsCreditedAmount = toSavings;
           await creditClientSavings(
             clientId,
             toSavings,
@@ -231,8 +288,88 @@ export async function recordCollection(
             message: `Your Susu collection of GHS ${amountStrSusu} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
           },
         });
-        const susuSmsIds = [clientForNotif.userId, userId].filter((id): id is number => typeof id === "number" && id > 0);
-        await sendSmsToUserIds(prisma, susuSmsIds, `Susu collection GHS ${amountStrSusu} recorded. - The Determiners`);
+        const clientSmsIds = [clientForNotif.userId].filter((id): id is number => typeof id === "number" && id > 0);
+        console.info("[SMS] Trigger", {
+          source: "recordCollection.susu",
+          clientId,
+          recipientUserIds: clientSmsIds.length,
+        });
+        const savingsAccount = creditedToSavings
+          ? await prisma.savingsAccount.findUnique({
+            where: { clientId },
+            select: { balance: true },
+          })
+          : null;
+        const balanceLine = savingsAccount
+          ? `Savings balance: GHS ${formatAmountForDisplay(Number(savingsAccount.balance))}.`
+          : null;
+        const savingsBalanceValue = creditedToSavings
+          ? formatAmountForDisplay(Number(savingsAccount?.balance ?? 0))
+          : null;
+        const cycleStats = await prisma.dailyCollection.aggregate({
+          where: { susuCycleId: cycle.id, collectionStatus: "collected" },
+          _count: { id: true },
+          _sum: { collectedAmount: true },
+        });
+        const collectorName = `${agent.user.firstName ?? ""} ${agent.user.lastName ?? ""}`.trim();
+
+        const cycleProgress = `${cycleStats._count.id}/${cycleLength}`;
+        const totalCyclePaid = formatAmountForDisplay(Number(cycleStats._sum.collectedAmount ?? 0));
+        const clientName = `${clientForNotif.user.firstName ?? ""} ${clientForNotif.user.lastName ?? ""}`.trim();
+
+        if (creditedToSavings && savingsCreditedAmount > 0) {
+          const receiptSusu = `${receipt}-SUSU`;
+          const receiptSavings = `${receipt}-SAVINGS`;
+          const amountStrSavings = formatAmountForDisplay(savingsCreditedAmount);
+
+          // SMS #1: Susu portion
+          await sendSmsToUserIds(
+            prisma,
+            clientSmsIds,
+            await buildRichCycleSms({
+              clientName,
+              primaryEventLine: `Susu collection of GHS ${amountStrSusu} has been recorded.`,
+              reference: receiptSusu,
+              date: recordedAt,
+              cycleProgress,
+              totalCyclePaid,
+              savingsBalance: savingsBalanceValue,
+              collectedBy: collectorName || null,
+            })
+          );
+
+          // SMS #2: Savings remainder
+          await sendSmsToUserIds(
+            prisma,
+            clientSmsIds,
+            await buildRichCycleSms({
+              clientName,
+              primaryEventLine: `GHS ${amountStrSavings} has been credited to your savings account.`,
+              reference: receiptSavings,
+              date: recordedAt,
+              cycleProgress,
+              totalCyclePaid,
+              savingsBalance: savingsBalanceValue,
+              collectedBy: collectorName || null,
+            })
+          );
+        } else {
+          // Exact multiple (no remainder) or flexible: only one SMS for Susu portion
+          await sendSmsToUserIds(
+            prisma,
+            clientSmsIds,
+            await buildRichCycleSms({
+              clientName,
+              primaryEventLine: `Susu collection of GHS ${amountStrSusu} has been recorded.`,
+              reference: receipt,
+              date: recordedAt,
+              cycleProgress,
+              totalCyclePaid,
+              savingsBalance: null,
+              collectedBy: collectorName || null,
+            })
+          );
+        }
       }
       await prisma.notification.create({
         data: {
@@ -287,7 +424,7 @@ export async function recordCollection(
 
       const clientForLoanNotif = await prisma.client.findUnique({
         where: { id: clientId },
-        select: { userId: true },
+        select: { userId: true, user: { select: { firstName: true, lastName: true } } },
       });
       const loanAmountStr = formatAmountForDisplay(loanAmount);
       if (clientForLoanNotif) {
@@ -300,7 +437,23 @@ export async function recordCollection(
             message: `Your loan payment of GHS ${loanAmountStr} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
           },
         });
-        await sendSmsToUserIds(prisma, [clientForLoanNotif.userId], `Loan payment GHS ${loanAmountStr} recorded. - The Determiners`);
+        console.info("[SMS] Trigger", {
+          source: "recordCollection.loan",
+          clientId,
+          recipientUserIds: 1,
+        });
+        const remainingBalance = Math.max(0, Number(loan.currentBalance) - loanAmount);
+        await sendSmsToUserIds(
+          prisma,
+          [clientForLoanNotif.userId],
+          await buildPremiumSms({
+            clientName: `${clientForLoanNotif.user.firstName ?? ""} ${clientForLoanNotif.user.lastName ?? ""}`.trim(),
+            eventLine: `Your loan payment of GHS ${loanAmountStr} has been successfully recorded.`,
+            reference: receiptNumber,
+            date: new Date(),
+            balanceLine: `Remaining loan balance: GHS ${formatAmountForDisplay(remainingBalance)}.`,
+          })
+        );
       }
       await prisma.notification.create({
         data: {
