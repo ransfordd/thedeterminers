@@ -17,6 +17,14 @@ function getCycleLength(start: Date, end: Date): number {
   return Math.round(ms / (24 * 60 * 60 * 1000)) + 1;
 }
 
+function toCents(amount: number): number {
+  return Math.round(amount * 100);
+}
+
+function fromCents(cents: number): number {
+  return cents / 100;
+}
+
 export async function recordAdminPayment(
   _prev: AdminPaymentState,
   formData: FormData
@@ -216,8 +224,12 @@ export async function recordAdminPayment(
         recordedSusuAmount = amount;
       } else {
         // Fixed: only multiples of daily amount go to Susu; remainder to savings
-        const susuPart = Math.floor(amount / dailyAmountNum) * dailyAmountNum;
-        const toSavings = amount - susuPart;
+        const amountCents = toCents(amount);
+        const dailyAmountCents = toCents(dailyAmountNum);
+        const susuPartCents = Math.floor(amountCents / dailyAmountCents) * dailyAmountCents;
+        const toSavingsCents = amountCents - susuPartCents;
+        const susuPart = fromCents(susuPartCents);
+        const toSavings = fromCents(toSavingsCents);
 
         if (susuPart < dailyAmountNum) {
           return {
@@ -225,7 +237,7 @@ export async function recordAdminPayment(
           };
         }
 
-        const numDays = Math.round(susuPart / dailyAmountNum);
+        const numDays = Math.floor(susuPartCents / dailyAmountCents);
         const dayNumbers: number[] = [];
         for (let d = 1; d <= cycleLength && dayNumbers.length < numDays; d++) {
           if (!usedDays.has(d)) dayNumbers.push(d);
