@@ -104,6 +104,20 @@ export function NewApplicationForm({
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>
+        <div className="md:col-span-2">
+          <label htmlFor="repaymentFrequency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Repayment frequency
+          </label>
+          <select
+            id="repaymentFrequency"
+            name="repaymentFrequency"
+            defaultValue="monthly"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
+          >
+            <option value="monthly">Monthly</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
       </div>
 
       <div>

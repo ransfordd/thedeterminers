@@ -6,6 +6,7 @@ import { PageHeader, ModernCard } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { ApplicationReviewActions } from "./ApplicationReviewActions";
+import { DisburseLoanForm } from "./DisburseLoanForm";
 
 function toNum(d: unknown): number {
   if (d == null) return 0;
@@ -32,6 +33,7 @@ export default async function AdminApplicationDetailPage({
         client: { include: { user: true, agent: { include: { user: true } } } },
         product: true,
         reviewer: true,
+        loan: { select: { id: true, loanNumber: true } },
       },
     }),
     getCurrencyDisplay(),
@@ -67,6 +69,8 @@ export default async function AdminApplicationDetailPage({
             <dd>{formatCurrencyFromGhs(toNum(application.requestedAmount), display)}</dd>
             <dt className="text-gray-500 dark:text-gray-400">Requested term</dt>
             <dd>{application.requestedTermMonths} months</dd>
+            <dt className="text-gray-500 dark:text-gray-400">Repayment frequency</dt>
+            <dd>{application.repaymentFrequency === "weekly" ? "Weekly" : "Monthly"}</dd>
             <dt className="text-gray-500 dark:text-gray-400">Purpose</dt>
             <dd>{application.purpose}</dd>
             <dt className="text-gray-500 dark:text-gray-400">Status</dt>
@@ -115,6 +119,17 @@ export default async function AdminApplicationDetailPage({
             )}
           </dl>
         </ModernCard>
+
+        {application.applicationStatus === "approved" && !application.loan && (
+          <DisburseLoanForm applicationId={application.id} applicationNumber={application.applicationNumber} />
+        )}
+        {application.loan && (
+          <ModernCard title="Loan" subtitle="Already disbursed" icon={<i className="fas fa-check-circle text-green-600" />}>
+            <p className="text-sm">
+              Loan number: <span className="font-mono font-medium">{application.loan.loanNumber}</span>
+            </p>
+          </ModernCard>
+        )}
 
         {isPending && (
           <ApplicationReviewActions

@@ -28,14 +28,12 @@ This document points to important server-side functions and engines so a reader 
 - **completeCycle(cycleId):** Mark cycle as completed; set completion_date, payout_date.
 - **ensureCurrentMonthCycle(clientId):** Implemented as `ensureSusuCycleForMonth` in `lib/susu-cycle.ts` (see above).
 
-### Loan engine (to be added: `lib/engines/loan.ts`)
+### Loan repayment
 
-- **Approve/reject application:** Update application status; optionally create loan record on approval.
-- **Disburse loan:** Create loan, schedule payments, update balances.
-- **Record repayment:** Apply payment to schedule; update loan balance and next payment; apply penalties if overdue.
-- **Calculate penalty:** Compute overdue penalty (e.g. from system_settings rate).
-
-*Add exact function names and file path once implemented.*
+- **`lib/loan-schedule.ts`:** Due-date math (`firstDueDateFromDisbursement`, `buildDueDates`, `installmentCountForTerm`) and installment breakdown (`computeInstallmentBreakdown`) for flat or reducing-balance loans (weekly vs monthly periods).
+- **`lib/loan-payment-apply.ts`:** `applyLoanInstallmentPayment` (debit savings + apply), `recordLoanInstallmentCashPayment` (agent/admin/collector cash path), shared `applyAmountToLoanSchedule`. Overpayments **cascade** to the next installment in the same payment (consecutive rows by `paymentNumber`).
+- **`app/actions/loan-disbursement.ts`:** `disburseApprovedLoan` — creates `Loan`, `LoanRepaymentPlan`, and `LoanPayment` rows after approval.
+- **`lib/loan-repayment-cron.ts` – runLoanRepaymentCron():** Due reminders, auto-debit after grace days, overdue flags. Called from `/api/cron/loan-repayments`.
 
 ### Holiday manager (to be added: `lib/engines/holiday.ts` or similar)
 

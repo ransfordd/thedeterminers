@@ -76,6 +76,16 @@ enum ApplicationStatus {
   cancelled
 }
 
+enum RepaymentFrequency {
+  weekly
+  monthly
+}
+
+enum LoanRepaymentPlanStatus {
+  active
+  closed
+}
+
 enum LoanStatus {
   active
   paid_off
@@ -396,6 +406,7 @@ model LoanApplication {
   loanProductId        Int               @map("loan_product_id")
   requestedAmount     Decimal           @map("requested_amount") @db.Decimal(18, 2)
   requestedTermMonths  Int               @map("requested_term_months")
+  repaymentFrequency  RepaymentFrequency @default(monthly) @map("repayment_frequency")
   purpose             String            @db.Text
   guarantorName       String?           @map("guarantor_name") @db.VarChar(100)
   guarantorPhone      String?           @map("guarantor_phone") @db.VarChar(20)
@@ -448,6 +459,20 @@ model Loan {
   disbursedBy User            @relation("DisbursedBy", fields: [disbursedById], references: [id])
   payments    LoanPayment[]
   loanDeductionNotifications LoanDeductionNotification[]
+  repaymentPlan LoanRepaymentPlan?
+}
+
+model LoanRepaymentPlan {
+  id                  Int                     @id @default(autoincrement())
+  loanId              Int                     @unique @map("loan_id")
+  frequency           RepaymentFrequency      @map("repayment_frequency")
+  graceDaysAfterDue   Int                     @default(2) @map("grace_days_after_due")
+  firstDueDate        DateTime                @map("first_due_date") @db.Date
+  installmentCount    Int                     @map("installment_count")
+  status              LoanRepaymentPlanStatus @default(active) @map("status")
+  createdAt           DateTime                @default(now()) @map("created_at")
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
 }
 
 model LoanPayment {

@@ -25,7 +25,7 @@ export default async function ClientLoansPage() {
     );
   }
 
-  const { loan, payments } = await getClientLoanSchedule(client.id);
+  const { loan, payments, pendingDisbursement } = await getClientLoanSchedule(client.id);
   const columns = [
     { key: "paymentNumber", header: "Payment #" },
     { key: "dueDate", header: "Due Date", render: (r: { dueDate: Date }) => new Date(r.dueDate).toLocaleDateString("en-GB") },
@@ -44,20 +44,57 @@ export default async function ClientLoansPage() {
         backHref="/client"
         variant="green"
       />
+      {pendingDisbursement && !loan && (
+        <ModernCard
+          title="Loan approved — schedule not active yet"
+          subtitle="Your application was approved. Payment dates appear after the loan is disbursed by the office."
+          icon={<i className="fas fa-hourglass-half text-amber-500" />}
+          className="mb-6"
+        >
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <dt className="text-gray-500 dark:text-gray-400">Application</dt>
+            <dd className="font-mono">{pendingDisbursement.applicationNumber}</dd>
+            <dt className="text-gray-500 dark:text-gray-400">Approved amount</dt>
+            <dd>{formatCurrencyFromGhs(pendingDisbursement.approvedAmount, display)}</dd>
+            {pendingDisbursement.approvedTermMonths != null && (
+              <>
+                <dt className="text-gray-500 dark:text-gray-400">Term</dt>
+                <dd>{pendingDisbursement.approvedTermMonths} months</dd>
+              </>
+            )}
+            <dt className="text-gray-500 dark:text-gray-400">Repayment</dt>
+            <dd>{pendingDisbursement.repaymentFrequency === "weekly" ? "Weekly" : "Monthly"}</dd>
+            {pendingDisbursement.approvalDate && (
+              <>
+                <dt className="text-gray-500 dark:text-gray-400">Approved on</dt>
+                <dd>{new Date(pendingDisbursement.approvalDate).toLocaleDateString("en-GB")}</dd>
+              </>
+            )}
+          </dl>
+        </ModernCard>
+      )}
       {loan && (
         <ModernCard
           title={`Loan ${loan.loanNumber}`}
-          subtitle={`Current balance: ${formatCurrencyFromGhs(loan.currentBalance, display)} · Monthly: ${formatCurrencyFromGhs(loan.monthlyPayment, display)}`}
+          subtitle={`Current balance: ${formatCurrencyFromGhs(loan.currentBalance, display)} · Typical installment: ${formatCurrencyFromGhs(loan.monthlyPayment, display)}`}
           icon={<i className="fas fa-wallet" />}
           className="mb-6"
         >
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="text-gray-500 dark:text-gray-400">Current Balance</p>
+              <p className="text-gray-500 dark:text-gray-400">Current balance</p>
               <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.currentBalance, display)}</p>
             </div>
             <div>
-              <p className="text-gray-500 dark:text-gray-400">Monthly Payment</p>
+              <p className="text-gray-500 dark:text-gray-400">Total to repay</p>
+              <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.totalRepaymentAmount, display)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Total repaid</p>
+              <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.totalPaid, display)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Installment amount</p>
               <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.monthlyPayment, display)}</p>
             </div>
           </div>
@@ -71,7 +108,13 @@ export default async function ClientLoansPage() {
         <DataTable
           columns={columns}
           data={payments}
-          emptyMessage={loan ? "No payment schedule entries yet." : "You don't have an active loan."}
+          emptyMessage={
+            loan
+              ? "No payment schedule entries yet."
+              : pendingDisbursement
+                ? "Your installment schedule will appear here after disbursement."
+                : "You don't have an active loan."
+          }
         />
       </ModernCard>
     </>

@@ -29,6 +29,7 @@ This document lists Route Handlers and any public API so a reader knows method, 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET or POST | `/api/cron/month-end` | `CRON_SECRET`: send `Authorization: Bearer <CRON_SECRET>` or query `?secret=<CRON_SECRET>` | Runs month-end settlement: closes previous month’s active Susu cycles (marks cancelled), computes commission (fixed/flexible rules), credits (total − commission) to each client’s savings, then ensures a new cycle for the current month for all active clients. Response: `{ ok, closed, credited, errors[] }`. Call at the start of each month (e.g. Vercel Cron `0 0 1 * *`). |
+| GET or POST | `/api/cron/loan-repayments` | Same `CRON_SECRET` as month-end | Sends in-app due reminders for installments due today; auto-debits savings for overdue installments past grace days (per loan repayment plan, default 2 days after due); marks stale installments as `overdue`. Response: `{ ok, reminders, autoDeductions, errors[] }`. Run daily (e.g. `0 7 * * *`). |
 
 ### Future API (placeholders)
 

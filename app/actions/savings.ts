@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
 import { debitClientSavings, creditClientSavings } from "@/lib/savings";
+import { applyLoanInstallmentPayment } from "@/lib/loan-payment-apply";
 import { formatAmountForDisplay } from "@/lib/currency";
 
 export type SavingsActionState = { success?: boolean; error?: string };
@@ -207,74 +208,14 @@ export async function payLoanFromSavings(
 
   if (!loanId || amount <= 0) return { error: "Invalid loan or amount" };
 
-  const loan = await prisma.loan.findFirst({
-    where: { id: loanId, clientId, loanStatus: "active" },
-    include: {
-      payments: {
-        where: { paymentStatus: "pending" },
-        orderBy: { paymentNumber: "asc" },
-        take: 1,
-      },
-    },
-  });
-  if (!loan) return { error: "Loan not found or not active" };
-  const nextPayment = loan.payments[0];
-  if (!nextPayment) return { error: "No pending payment for this loan" };
-
-  const currentBalance = Number(loan.currentBalance);
-  if (amount > currentBalance) return { error: "Amount exceeds loan balance" };
-
-  const account = await prisma.savingsAccount.findUnique({
-    where: { clientId },
-    select: { balance: true },
-  });
-  const balance = account ? Number(account.balance) : 0;
-  if (amount > balance) return { error: "Insufficient savings balance" };
-
-  const debitResult = await debitClientSavings(
+  const applyRes = await applyLoanInstallmentPayment({
     clientId,
+    loanId,
     amount,
-    "withdrawal_request",
-    "loan_payment",
-    "Payment from savings to loan",
-    null
-  );
-  if (!debitResult.success) return { error: debitResult.error };
-
-  const totalDue = Number(nextPayment.totalDue);
-  const paymentDate = new Date();
-
-  await prisma.$transaction([
-    prisma.loanPayment.update({
-      where: { id: nextPayment.id },
-      data: {
-        amountPaid: new Decimal(amount),
-        paymentDate,
-        paymentStatus: amount >= totalDue ? "paid" : "partial",
-        notes,
-      },
-    }),
-    prisma.loan.update({
-      where: { id: loan.id },
-      data: {
-        currentBalance: { decrement: amount },
-        totalPaid: { increment: amount },
-        paymentsMade: { increment: 1 },
-        lastPaymentDate: paymentDate,
-      },
-    }),
-  ]);
-
-  const updatedLoan = await prisma.loan.findUnique({
-    where: { id: loan.id },
-    select: { currentBalance: true },
+    notes,
+    processedByUserId: null,
   });
-  if (updatedLoan && Number(updatedLoan.currentBalance) <= 0) {
-    await prisma.loan.update({
-      where: { id: loan.id },
-      data: { loanStatus: "paid_off" as const },
-    });
-  }
+  if (!applyRes.success) return { error: applyRes.error };
 
   revalidatePath("/client/savings");
   revalidatePath("/client/savings/pay-loan");

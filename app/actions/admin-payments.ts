@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
+import { recordLoanInstallmentCashPayment } from "@/lib/loan-payment-apply";
 import { ensureSusuCycleForMonth } from "@/lib/susu-cycle";
 import { formatAmountForDisplay } from "@/lib/currency";
 import { creditClientSavings } from "@/lib/savings";
@@ -50,35 +51,26 @@ export async function recordAdminPayment(
       const loanId = parseInt((formData.get("loanId") as string) ?? "0", 10);
       if (!loanId) return { error: "Select a loan" };
 
-      const loan = await prisma.loan.findFirst({
+      const loanBefore = await prisma.loan.findFirst({
         where: { id: loanId, clientId, loanStatus: "active" },
-        include: { payments: { where: { paymentStatus: "pending" }, orderBy: { paymentNumber: "asc" }, take: 1 } },
+        select: { id: true, currentBalance: true },
       });
-      if (!loan) return { error: "Loan not found or not active" };
-      const nextPayment = loan.payments[0];
-      if (!nextPayment) return { error: "No pending payment for this loan" };
+      if (!loanBefore) return { error: "Loan not found or not active" };
 
-      await prisma.$transaction([
-        prisma.loanPayment.update({
-          where: { id: nextPayment.id },
-          data: {
-            amountPaid: new Decimal(amount),
-            paymentDate,
-            paymentStatus: Number(nextPayment.totalDue) <= amount ? "paid" : "partial",
-            receiptNumber,
-            notes,
-          },
-        }),
-        prisma.loan.update({
-          where: { id: loan.id },
-          data: {
-            currentBalance: { decrement: amount },
-            totalPaid: { increment: amount },
-            paymentsMade: { increment: 1 },
-            lastPaymentDate: paymentDate,
-          },
-        }),
-      ]);
+      const cashRes = await recordLoanInstallmentCashPayment({
+        clientId,
+        loanId,
+        amount,
+        paymentDate,
+        receiptNumber,
+        notes,
+      });
+      if (!cashRes.success) return { error: cashRes.error };
+
+      const loan = await prisma.loan.findUnique({
+        where: { id: loanId },
+        select: { currentBalance: true },
+      });
 
       const clientForNotif = await prisma.client.findUnique({
         where: { id: clientId },
@@ -123,7 +115,7 @@ export async function recordAdminPayment(
           clientId,
           recipientUserIds: loanSmsIds.length,
         });
-        const remainingBalance = Math.max(0, Number(loan.currentBalance) - amount);
+        const remainingBalance = Math.max(0, Number(loan?.currentBalance ?? 0));
         await sendSmsToUserIds(
           prisma,
           loanSmsIds,

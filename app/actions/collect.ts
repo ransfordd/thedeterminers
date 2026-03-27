@@ -9,6 +9,7 @@ import { ensureSusuCycleForMonth } from "@/lib/susu-cycle";
 import { formatAmountForDisplay } from "@/lib/currency";
 import { creditClientSavings } from "@/lib/savings";
 import { buildPremiumSms, buildRichCycleSms, sendSmsToUserIds } from "@/lib/sms";
+import { recordLoanInstallmentCashPayment } from "@/lib/loan-payment-apply";
 
 export type CollectState = { success?: boolean; error?: string };
 
@@ -388,39 +389,28 @@ export async function recordCollection(
       const paymentDateStr = (formData.get("paymentDate") as string) || collectionDateStr;
       const paymentDate = new Date(paymentDateStr + "T12:00:00Z");
 
-      const loan = await prisma.loan.findFirst({
+      const loanRow = await prisma.loan.findFirst({
         where: { clientId, loanStatus: "active" },
-        include: { payments: { where: { paymentStatus: "pending" }, orderBy: { paymentNumber: "asc" }, take: 1 } },
+        select: { id: true, currentBalance: true },
+        orderBy: { id: "desc" },
       });
-      if (!loan) return { error: "No active loan for this client" };
-      const nextPayment = loan.payments[0];
-      if (!nextPayment) return { error: "No pending payment found for this loan" };
+      if (!loanRow) return { error: "No active loan for this client" };
 
-      const amountPaid = new Decimal(loanAmount);
-      const totalDue = Number(nextPayment.totalDue);
+      const cashRes = await recordLoanInstallmentCashPayment({
+        clientId,
+        loanId: loanRow.id,
+        amount: loanAmount,
+        paymentDate,
+        receiptNumber,
+        notes,
+        collectedById: agent.id,
+      });
+      if (!cashRes.success) return { error: cashRes.error };
 
-      await prisma.$transaction([
-        prisma.loanPayment.update({
-          where: { id: nextPayment.id },
-          data: {
-            amountPaid,
-            paymentDate,
-            paymentStatus: totalDue <= loanAmount ? "paid" : "partial",
-            collectedById: agent.id,
-            receiptNumber,
-            notes,
-          },
-        }),
-        prisma.loan.update({
-          where: { id: loan.id },
-          data: {
-            currentBalance: { decrement: loanAmount },
-            totalPaid: { increment: loanAmount },
-            paymentsMade: { increment: 1 },
-            lastPaymentDate: paymentDate,
-          },
-        }),
-      ]);
+      const loan = await prisma.loan.findUnique({
+        where: { id: loanRow.id },
+        select: { currentBalance: true },
+      });
 
       const clientForLoanNotif = await prisma.client.findUnique({
         where: { id: clientId },
@@ -442,7 +432,7 @@ export async function recordCollection(
           clientId,
           recipientUserIds: 1,
         });
-        const remainingBalance = Math.max(0, Number(loan.currentBalance) - loanAmount);
+        const remainingBalance = Math.max(0, Number(loan?.currentBalance ?? 0));
         await sendSmsToUserIds(
           prisma,
           [clientForLoanNotif.userId],

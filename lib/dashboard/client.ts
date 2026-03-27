@@ -410,13 +410,42 @@ export async function getClientSusuSchedule(clientId: number) {
   }));
 }
 
-/** Client: Loan payment schedule for active loan */
+/** Client: Loan payment schedule for active loan; optional approved application waiting on disbursement */
 export async function getClientLoanSchedule(clientId: number) {
   const loan = await prisma.loan.findFirst({
     where: { clientId, loanStatus: "active" },
     orderBy: { id: "desc" },
   });
-  if (!loan) return { loan: null, payments: [] };
+  if (!loan) {
+    const pendingDisbursement = await prisma.loanApplication.findFirst({
+      where: {
+        clientId,
+        applicationStatus: "approved",
+        loan: { is: null },
+      },
+      orderBy: { id: "desc" },
+      select: {
+        applicationNumber: true,
+        approvedAmount: true,
+        approvedTermMonths: true,
+        repaymentFrequency: true,
+        approvalDate: true,
+      },
+    });
+    return {
+      loan: null,
+      payments: [],
+      pendingDisbursement: pendingDisbursement
+        ? {
+            applicationNumber: pendingDisbursement.applicationNumber,
+            approvedAmount: toNum(pendingDisbursement.approvedAmount),
+            approvedTermMonths: pendingDisbursement.approvedTermMonths,
+            repaymentFrequency: pendingDisbursement.repaymentFrequency,
+            approvalDate: pendingDisbursement.approvalDate,
+          }
+        : null,
+    };
+  }
   const payments = await prisma.loanPayment.findMany({
     where: { loanId: loan.id },
     orderBy: { paymentNumber: "asc" },
@@ -426,6 +455,8 @@ export async function getClientLoanSchedule(clientId: number) {
       loanNumber: loan.loanNumber,
       currentBalance: toNum(loan.currentBalance),
       monthlyPayment: toNum(loan.monthlyPayment),
+      totalPaid: toNum(loan.totalPaid),
+      totalRepaymentAmount: toNum(loan.totalRepaymentAmount),
     },
     payments: payments.map((p) => ({
       paymentNumber: p.paymentNumber,
@@ -435,6 +466,7 @@ export async function getClientLoanSchedule(clientId: number) {
       paymentStatus: p.paymentStatus,
       paymentDate: p.paymentDate,
     })),
+    pendingDisbursement: null,
   };
 }
 

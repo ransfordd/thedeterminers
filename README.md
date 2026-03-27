@@ -38,7 +38,7 @@ Use this workflow to run everything on your machine for testing; when satisfied,
    - `NEXTAUTH_URL="http://localhost:3000"`
    - `NEXTAUTH_SECRET` to any long random string (e.g. `openssl rand -base64 32`)
    - Optional: `ARKESEL_API_KEY` and `ARKESEL_SENDER_ID` for SMS notifications (payments, withdrawals, etc.). If unset, SMS is skipped.
-   - Optional: `CRON_SECRET` for the month-end settlement cron (`/api/cron/month-end`). Required if you call that endpoint (e.g. Vercel Cron or external scheduler).
+   - Optional: `CRON_SECRET` for secured crons: month-end (`/api/cron/month-end`) and daily loan repayment reminders/auto-debit (`/api/cron/loan-repayments`). Required if you schedule those endpoints.
 
 3. **Install, migrate, seed**
    ```bash

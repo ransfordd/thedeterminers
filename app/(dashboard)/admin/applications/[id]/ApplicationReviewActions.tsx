@@ -27,7 +27,11 @@ export function ApplicationReviewActions({
       <div className="space-y-4">
         {approveState?.error && <p className="text-sm text-red-600 dark:text-red-400">{approveState.error}</p>}
         {rejectState?.error && <p className="text-sm text-red-600 dark:text-red-400">{rejectState.error}</p>}
-        {approveState?.success && <p className="text-sm text-green-600 dark:text-green-400">Application approved. Notifications sent.</p>}
+        {approveState?.success && (
+          <p className="text-sm text-green-600 dark:text-green-400">
+            Application approved. Notifications sent. Use <strong>Disburse loan</strong> below to create the contract and payment schedule so the client sees it on Loan Schedule.
+          </p>
+        )}
         {rejectState?.success && <p className="text-sm text-green-600 dark:text-green-400">Application declined. Notifications sent.</p>}
 
         <form action={approveAction} className="flex flex-wrap items-end gap-4 p-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">

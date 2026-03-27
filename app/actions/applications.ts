@@ -32,6 +32,8 @@ export async function createLoanApplication(
   const loanProductId = parseInt((formData.get("loanProductId") as string) ?? "0", 10);
   const requestedAmount = parseFloat((formData.get("requestedAmount") as string) ?? "0");
   const requestedTermMonths = parseInt((formData.get("requestedTermMonths") as string) ?? "0", 10);
+  const repaymentFrequency =
+    (formData.get("repaymentFrequency") as string)?.trim() === "weekly" ? "weekly" : "monthly";
   const purpose = (formData.get("purpose") as string)?.trim();
   const guarantorName = (formData.get("guarantorName") as string)?.trim() || null;
   const guarantorPhone = (formData.get("guarantorPhone") as string)?.trim() || null;
@@ -88,6 +90,7 @@ export async function createLoanApplication(
       loanProductId,
       requestedAmount: new Decimal(requestedAmount),
       requestedTermMonths,
+      repaymentFrequency,
       purpose,
       guarantorName,
       guarantorPhone,
@@ -222,7 +225,11 @@ export async function approveLoanApplication(
   const agentUserIdApproved = clientWithAgentForApproved?.agent?.userId ?? application.client.agent?.userId ?? null;
 
   const notifications: { userId: number; title: string; message: string }[] = [
-    { userId: application.client.userId, title: "Loan approved", message: `Your loan application #${appNumber} has been approved for GHS ${amountStr}. - The Determiners` },
+    {
+      userId: application.client.userId,
+      title: "Loan approved",
+      message: `Your loan application #${appNumber} has been approved for GHS ${amountStr}. Your repayment schedule will appear after the loan is disbursed. - The Determiners`,
+    },
   ];
   if (agentUserIdApproved != null)
     notifications.push({ userId: agentUserIdApproved, title: "Loan approved", message: `Loan application #${appNumber} for ${clientName} has been approved for GHS ${amountStr}.` });
@@ -240,7 +247,7 @@ export async function approveLoanApplication(
     notifications.map((n) => n.userId),
     await buildPremiumSms({
       clientName,
-      eventLine: `Loan application for ${clientName} has been approved for GHS ${amountStr}.`,
+      eventLine: `Loan application for ${clientName} has been approved for GHS ${amountStr}. Repayment schedule is available after disbursement.`,
       reference: appNumber,
       date: now,
     })
