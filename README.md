@@ -64,7 +64,7 @@ After running `npx prisma db seed` (or `npm run db:seed`), you can sign in with 
 | Agent   | agent@example.com     | agent123   |
 | Client  | client@example.com    | client123  |
 
-You can log in with **email**, **username**, or **phone number** (same password). Re-running seed resets the admin password to `admin123`. Override defaults with env vars: `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, etc.
+You can log in with **email**, **username**, or **phone number** (same password). Re-running seed does **not** overwrite an existing admin's password (only ensures the account stays active). New installs still get `admin123` unless you set `SEED_ADMIN_PASSWORD`. Override emails with `SEED_ADMIN_EMAIL`, etc.
 
 5. **When you’re done testing**  
    Stop containers: `docker compose down`. To deploy online, push your code and set production env vars (and a production Postgres/Redis) on your host.

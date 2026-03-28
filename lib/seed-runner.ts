@@ -139,9 +139,10 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
   const adminHash = await defaultPassword(adminPassword);
   const adminExisting = await prisma.user.findUnique({ where: { email: adminEmail } });
   if (adminExisting) {
+    // Do not reset password on re-seed (e.g. every Docker/Coolify container start); preserve admin-chosen passwords.
     await prisma.user.update({
       where: { id: adminExisting.id },
-      data: { passwordHash: adminHash, status: "active" },
+      data: { status: "active" },
     });
   } else {
     await prisma.user.create({

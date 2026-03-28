@@ -9,7 +9,7 @@
  * - Agent:   agent@example.com   / agent123
  * - Client:  client@example.com  / client123
  *
- * Re-running seed resets the admin password to admin123.
+ * Re-running seed does not change an existing admin's password (only ensures status active). New installs still get SEED_ADMIN_PASSWORD or admin123.
  */
 import { PrismaClient } from "@prisma/client";
 import { runSeed } from "../lib/seed-runner";

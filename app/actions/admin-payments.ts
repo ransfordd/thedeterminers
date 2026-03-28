@@ -121,7 +121,7 @@ export async function recordAdminPayment(
           loanSmsIds,
           await buildPremiumSms({
             clientName,
-            eventLine: `A loan repayment of GHS ${amountStr} has been recorded for ${clientName}.`,
+            eventLine: `A loan repayment of GHS ${amountStr} has been recorded.`,
             reference: receiptNumber,
             date: new Date(),
             balanceLine: `Remaining loan balance: GHS ${formatAmountForDisplay(remainingBalance)}.`,
@@ -239,7 +239,7 @@ export async function recordAdminPayment(
           cycleCompleteSmsIds,
           await buildPremiumSms({
             clientName,
-            eventLine: `Susu cycle is complete. GHS ${amtStr} has been credited to savings for ${clientName}.`,
+            eventLine: `Your Susu cycle is complete. GHS ${amtStr} has been credited to your savings account.`,
             reference: receiptNumber ?? `PAY-${clientId}-${Date.now()}`,
             date: new Date(),
             balanceLine,

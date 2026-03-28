@@ -157,7 +157,7 @@ export async function createLoanApplication(
     smsUserIds,
     await buildPremiumSms({
       clientName,
-      eventLine: `Loan application for GHS ${amountStr} has been submitted for ${clientName} and is under review.`,
+      eventLine: `Your loan application for GHS ${amountStr} has been submitted and is under review.`,
       reference: appNumber,
       date: appliedDate,
     })
@@ -247,7 +247,7 @@ export async function approveLoanApplication(
     notifications.map((n) => n.userId),
     await buildPremiumSms({
       clientName,
-      eventLine: `Loan application for ${clientName} has been approved for GHS ${amountStr}. Repayment schedule is available after disbursement.`,
+      eventLine: `Your loan application has been approved for GHS ${amountStr}. Repayment schedule is available after disbursement.`,
       reference: appNumber,
       date: now,
     })
@@ -322,7 +322,7 @@ export async function rejectLoanApplication(
     notifications.map((n) => n.userId),
     await buildPremiumSms({
       clientName,
-      eventLine: `Loan application for ${clientName} has been declined.`,
+      eventLine: `Your loan application has been declined.`,
       reference: appNumber,
       date: now,
     })

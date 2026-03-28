@@ -177,7 +177,7 @@ export async function requestEmergencyWithdrawal(
       emergencySmsIds,
       await buildPremiumSms({
         clientName,
-        eventLine: `Emergency withdrawal request of GHS ${requestedAmount.toFixed(2)} has been submitted by ${clientName}.`,
+        eventLine: `An emergency withdrawal request of GHS ${requestedAmount.toFixed(2)} has been submitted.`,
         reference: `EWR-${cycleId}-${Date.now()}`,
       })
     );
