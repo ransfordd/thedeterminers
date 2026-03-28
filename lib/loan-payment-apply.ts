@@ -73,7 +73,7 @@ export async function applyAmountToLoanSchedule(input: {
         else if (newPaid > EPS) paymentStatus = "partial";
         else paymentStatus = p.paymentStatus as "pending" | "partial" | "overdue";
 
-        const data: Prisma.LoanPaymentUpdateInput = {
+        const data: Prisma.LoanPaymentUncheckedUpdateInput = {
           amountPaid: new Decimal(newPaid),
           paymentDate: fullyPaid ? paymentDate : p.paymentDate ?? null,
           paymentStatus,
