@@ -84,8 +84,8 @@ export async function recordAdminPayment(
           data: {
             userId: clientForNotif.userId,
             notificationType: "payment_recorded",
-            title: "Loan payment recorded",
-            message: `Your loan payment of GHS ${amountStr} has been recorded successfully.${ref ? ` Reference: ${ref}` : ""}`,
+            title: "Loan repayment recorded",
+            message: `Your loan repayment of GHS ${amountStr} has been recorded successfully.${ref ? ` Reference: ${ref}` : ""}`,
           },
         });
         if (clientForNotif.agent?.userId) {
@@ -93,8 +93,8 @@ export async function recordAdminPayment(
             data: {
               userId: clientForNotif.agent.userId,
               notificationType: "payment_recorded",
-              title: "Client loan payment recorded",
-              message: `Loan payment of GHS ${amountStr} has been recorded for client ${clientName}.${ref ? ` Reference: ${ref}` : ""}`,
+              title: "Client loan repayment recorded",
+              message: `Loan repayment of GHS ${amountStr} has been recorded for client ${clientName}.${ref ? ` Reference: ${ref}` : ""}`,
             },
           });
         }
@@ -104,8 +104,8 @@ export async function recordAdminPayment(
             data: {
               userId: adminUserId,
               notificationType: "payment_recorded",
-              title: "Loan payment recorded",
-              message: `Loan payment of GHS ${amountStr} recorded for client ${clientName}.${ref ? ` Reference: ${ref}` : ""}`,
+              title: "Loan repayment recorded",
+              message: `Loan repayment of GHS ${amountStr} recorded for client ${clientName}.${ref ? ` Reference: ${ref}` : ""}`,
             },
           });
         }
@@ -121,7 +121,7 @@ export async function recordAdminPayment(
           loanSmsIds,
           await buildPremiumSms({
             clientName,
-            eventLine: `A loan payment of GHS ${amountStr} has been recorded for ${clientName}.`,
+            eventLine: `A loan repayment of GHS ${amountStr} has been recorded for ${clientName}.`,
             reference: receiptNumber,
             date: new Date(),
             balanceLine: `Remaining loan balance: GHS ${formatAmountForDisplay(remainingBalance)}.`,

@@ -384,7 +384,7 @@ export async function recordCollection(
 
     if (accountType === "loan" || accountType === "both") {
       const loanAmount = parseFloat((formData.get("loanAmount") as string) ?? "0");
-      if (loanAmount <= 0) return { error: "Loan payment amount must be greater than 0 when recording loan payment" };
+      if (loanAmount <= 0) return { error: "Loan repayment amount must be greater than 0 when recording loan repayment" };
 
       const paymentDateStr = (formData.get("paymentDate") as string) || collectionDateStr;
       const paymentDate = new Date(paymentDateStr + "T12:00:00Z");
@@ -423,8 +423,8 @@ export async function recordCollection(
           data: {
             userId: clientForLoanNotif.userId,
             notificationType: "payment_recorded",
-            title: "Loan payment recorded",
-            message: `Your loan payment of GHS ${loanAmountStr} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
+            title: "Loan repayment recorded",
+            message: `Your loan repayment of GHS ${loanAmountStr} has been recorded by your agent.${ref ? ` Reference: ${ref}` : ""}`,
           },
         });
         console.info("[SMS] Trigger", {
@@ -438,7 +438,7 @@ export async function recordCollection(
           [clientForLoanNotif.userId],
           await buildPremiumSms({
             clientName: `${clientForLoanNotif.user.firstName ?? ""} ${clientForLoanNotif.user.lastName ?? ""}`.trim(),
-            eventLine: `Your loan payment of GHS ${loanAmountStr} has been successfully recorded.`,
+            eventLine: `Your loan repayment of GHS ${loanAmountStr} has been successfully recorded.`,
             reference: receiptNumber,
             date: new Date(),
             balanceLine: `Remaining loan balance: GHS ${formatAmountForDisplay(remainingBalance)}.`,
@@ -449,8 +449,8 @@ export async function recordCollection(
         data: {
           userId,
           notificationType: "payment_recorded",
-          title: "Loan payment recorded",
-          message: `You recorded a loan payment of GHS ${loanAmountStr}.`,
+          title: "Loan repayment recorded",
+          message: `You recorded a loan repayment of GHS ${loanAmountStr}.`,
         },
       });
     }
