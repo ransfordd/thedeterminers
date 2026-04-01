@@ -1,15 +1,7 @@
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
 
-/** Get first and last day of the month for a given date (UTC date parts). */
-function getMonthBounds(d: Date): { start: Date; end: Date; daysInMonth: number } {
-  const y = d.getUTCFullYear();
-  const m = d.getUTCMonth();
-  const start = new Date(Date.UTC(y, m, 1));
-  const end = new Date(Date.UTC(y, m + 1, 0));
-  const daysInMonth = end.getUTCDate();
-  return { start, end, daysInMonth };
-}
+export const SUSU_CYCLE_DAYS_REQUIRED = 31;
 
 export type SusuCycleForCollection = {
   id: number;
@@ -20,8 +12,9 @@ export type SusuCycleForCollection = {
 };
 
 /**
- * Ensures an active Susu cycle exists for the client for the month of the given date.
- * If none exists, creates one (mirrors PHP SusuCycleEngine ensureCurrentMonthCycle).
+ * Ensures an active Susu cycle exists for the client.
+ * If none exists, creates one. Susu cycles are fixed at 31 required collection-days
+ * and do not auto-close at month boundaries.
  * Returns the cycle or null if client not found / inactive.
  */
 export async function ensureSusuCycleForMonth(
@@ -34,29 +27,23 @@ export async function ensureSusuCycleForMonth(
   });
   if (!client) return null;
 
-  const { start, end } = getMonthBounds(forDate);
-
   let cycle = await prisma.susuCycle.findFirst({
     where: {
       clientId,
       status: "active",
-      startDate: { lte: end },
-      endDate: { gte: start },
     },
     orderBy: { id: "desc" },
   });
 
-  if (cycle) return cycle;
-
-  // Mark any old active cycles for previous months as cancelled (match PHP behavior)
-  await prisma.susuCycle.updateMany({
-    where: {
-      clientId,
-      status: "active",
-      startDate: { lt: start },
-    },
-    data: { status: "cancelled" },
-  });
+  if (cycle) {
+    // Backward-compat safety: if older cycles were left "active" by the old month-based engine,
+    // keep only the newest active cycle.
+    await prisma.susuCycle.updateMany({
+      where: { clientId, status: "active", id: { not: cycle.id } },
+      data: { status: "cancelled" },
+    });
+    return cycle;
+  }
 
   const lastCycle = await prisma.susuCycle.findFirst({
     where: { clientId },
@@ -66,9 +53,12 @@ export async function ensureSusuCycleForMonth(
   const cycleNumber = (lastCycle?.cycleNumber ?? 0) + 1;
 
   const dailyAmount = client.dailyDepositAmount;
-  const daysInMonth = new Date(forDate.getUTCFullYear(), forDate.getUTCMonth() + 1, 0).getDate();
-  const totalAmount = new Decimal(Number(dailyAmount) * daysInMonth);
+  const totalAmount = new Decimal(Number(dailyAmount) * SUSU_CYCLE_DAYS_REQUIRED);
   const isFlexible = client.depositType === "flexible_amount";
+
+  const start = new Date(forDate);
+  const end = new Date(forDate);
+  end.setUTCDate(end.getUTCDate() + (SUSU_CYCLE_DAYS_REQUIRED - 1));
 
   cycle = await prisma.susuCycle.create({
     data: {

@@ -8,13 +8,11 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { debitClientSavings, creditClientSavings } from "@/lib/savings";
 import { applyLoanInstallmentPayment } from "@/lib/loan-payment-apply";
 import { formatAmountForDisplay } from "@/lib/currency";
+import { SUSU_CYCLE_DAYS_REQUIRED } from "@/lib/susu-cycle";
 
 export type SavingsActionState = { success?: boolean; error?: string };
 
-function getCycleLength(start: Date, end: Date): number {
-  const ms = end.getTime() - start.getTime();
-  return Math.round(ms / (24 * 60 * 60 * 1000)) + 1;
-}
+const CYCLE_LENGTH = SUSU_CYCLE_DAYS_REQUIRED;
 
 async function getClientIdForSession(): Promise<{ clientId: number } | { error: string }> {
   const session = await getServerSession(authOptions);
@@ -59,7 +57,7 @@ export async function payCycleFromSavings(
   });
   if (!cycle) return { error: "Cycle not found or not active" };
 
-  const cycleLength = getCycleLength(cycle.startDate, cycle.endDate);
+  const cycleLength = CYCLE_LENGTH;
   const existing = await prisma.dailyCollection.findMany({
     where: { susuCycleId: cycle.id, collectionStatus: "collected" },
     select: { dayNumber: true },
@@ -183,8 +181,20 @@ export async function payCycleFromSavings(
         agentFee: new Decimal(commission),
         payoutAmount: new Decimal(amountToClient),
         payoutDate: paymentDate,
+        payoutTransferred: amountToClient > 0,
+        payoutTransferredAt: amountToClient > 0 ? paymentDate : null,
       },
     });
+
+    if (amountToClient > 0) {
+      await creditClientSavings(
+        clientId,
+        amountToClient,
+        "cycle_completion",
+        `Susu cycle completed (commission GHS ${commission.toFixed(2)})`,
+        null
+      );
+    }
   }
 
   revalidatePath("/client/savings");

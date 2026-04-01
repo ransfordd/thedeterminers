@@ -40,20 +40,18 @@ export function CycleItemRow({ cycle, index }: CycleItemRowProps) {
           <div>
             <h5 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <i className="fas fa-calendar text-blue-500" />
-              {cycle.monthName}
+              {cycle.monthName} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">(Cycle #{cycle.cycleNumber})</span>
             </h5>
             <p className="text-sm text-gray-500 dark:text-gray-400">
+              Started{" "}
               {new Date(cycle.startDate).toLocaleDateString("en-GB", {
                 month: "short",
                 day: "numeric",
                 year: "numeric",
-              })}{" "}
-              -{" "}
-              {new Date(cycle.endDate).toLocaleDateString("en-GB", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
               })}
+              {" "}•{" "}
+              {cycle.isComplete ? "Completed" : "Requires"}{" "}
+              {cycle.daysRequired} collections
             </p>
           </div>
         </div>

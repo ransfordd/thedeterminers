@@ -25,14 +25,7 @@ type SusuCollectionTrackerProps = {
   depositType: string;
 };
 
-function getCycleLengthFromDates(startDate: string, endDate: string): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diff = Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
-  return Math.max(1, diff + 1);
-}
-
-const FALLBACK_CYCLE_DAYS = 31;
+const CYCLE_LENGTH_DAYS = 31;
 
 export function SusuCollectionTracker({
   activeCycle,
@@ -59,8 +52,7 @@ export function SusuCollectionTracker({
     );
   }
 
-  const cycleLength =
-    getCycleLengthFromDates(activeCycle.startDate, activeCycle.endDate) || FALLBACK_CYCLE_DAYS;
+  const cycleLength = CYCLE_LENGTH_DAYS;
   const collectionByDay: Record<number, TrackerCollection> = {};
   (collections ?? []).forEach((c) => {
     if (c.dayNumber >= 1 && c.dayNumber <= cycleLength) {

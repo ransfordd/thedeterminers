@@ -130,6 +130,14 @@ export default async function AdminDashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard icon={<i className="fas fa-wallet text-green-600" />} value={formatCurrencyFromGhs(metrics.portfolioValue, display)} label="Portfolio Value" sublabel="Total active loan value" variant="success" />
           <StatCard icon={<i className="fas fa-calendar-day text-blue-600" />} value={formatCurrencyFromGhs(metrics.collectionsToday, display)} label="Collections Today" sublabel="Susu + Loan payments" variant="primary" />
+          <StatCard
+            icon={<i className="fas fa-calendar-alt text-indigo-600" />}
+            value={formatCurrencyFromGhs(metrics.collectionsThisMonth, display)}
+            label="Collections (this month)"
+            sublabel="Click to view monthly breakdown"
+            variant="info"
+            href="/admin/collections/monthly"
+          />
           <StatCard icon={<i className="fas fa-exclamation-triangle text-red-600" />} value={metrics.overdueLoans.toLocaleString()} label="Overdue Loans" sublabel="Requires attention" variant="danger" />
           <StatCard
             icon={<i className="fas fa-percentage text-cyan-600" />}

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
-import { ensureSusuCycleForMonth } from "@/lib/susu-cycle";
+import { ensureSusuCycleForMonth, SUSU_CYCLE_DAYS_REQUIRED } from "@/lib/susu-cycle";
 import { formatAmountForDisplay } from "@/lib/currency";
 import { creditClientSavings } from "@/lib/savings";
 import { buildPremiumSms, buildRichCycleSms, sendSmsToUserIds } from "@/lib/sms";
@@ -13,10 +13,7 @@ import { recordLoanInstallmentCashPayment } from "@/lib/loan-payment-apply";
 
 export type CollectState = { success?: boolean; error?: string };
 
-function getCycleLength(start: Date, end: Date): number {
-  const ms = end.getTime() - start.getTime();
-  return Math.round(ms / (24 * 60 * 60 * 1000)) + 1;
-}
+const CYCLE_LENGTH = SUSU_CYCLE_DAYS_REQUIRED;
 
 function toCents(amount: number): number {
   return Math.round(amount * 100);
@@ -61,8 +58,6 @@ export async function recordCollection(
         where: {
           clientId,
           status: "active",
-          startDate: { lte: collectionDate },
-          endDate: { gte: collectionDate },
         },
         orderBy: { id: "desc" },
       });
@@ -83,7 +78,7 @@ export async function recordCollection(
         },
       });
 
-      const cycleLength = getCycleLength(cycle.startDate, cycle.endDate);
+      const cycleLength = CYCLE_LENGTH;
       const desiredDailyCents = clientForNotif ? toCents(Number(clientForNotif.dailyDepositAmount)) : null;
       const currentDailyCents = toCents(Number(cycle.dailyAmount));
       const desiredFlexible = clientForNotif ? clientForNotif.depositType === "flexible_amount" : cycle.isFlexible;
@@ -200,6 +195,7 @@ export async function recordCollection(
           },
         });
         recordedSusuAmount = susuAmount;
+        usedDays.add(dayNumber);
       } else {
         // Fixed: only multiples of daily amount go to Susu; remainder to savings
         const susuAmountCents = toCents(susuAmount);
@@ -243,6 +239,7 @@ export async function recordCollection(
           )
         );
         recordedSusuAmount = susuPart;
+        dayNumbers.forEach((d) => usedDays.add(d));
 
         if (toSavings > 0) {
           creditedToSavings = true;
@@ -274,6 +271,50 @@ export async function recordCollection(
               message: `Susu GHS ${susuStr} recorded for client. GHS ${savingsStr} credited to client's savings (overpayment).`,
             },
           });
+        }
+      }
+
+      // If the cycle just became complete, finalize it (commission + payout to savings)
+      if (usedDays.size >= cycleLength) {
+        const [agg, { computeCommission }] = await Promise.all([
+          prisma.dailyCollection.aggregate({
+            where: { susuCycleId: cycle.id, collectionStatus: "collected" },
+            _sum: { collectedAmount: true },
+            _count: { id: true },
+          }),
+          import("@/lib/commission"),
+        ]);
+        const totalCollected = Number(agg._sum.collectedAmount ?? 0);
+        const daysCollected = agg._count.id;
+        const dailyAmountNumNow = Number(cycle.dailyAmount);
+        const { commission, amountToClient } = computeCommission({
+          isFlexible: cycle.isFlexible ?? false,
+          dailyAmount: dailyAmountNumNow,
+          totalCollected,
+          daysCollected,
+        });
+
+        await prisma.susuCycle.update({
+          where: { id: cycle.id },
+          data: {
+            status: "completed",
+            completionDate: recordedAt,
+            agentFee: new Decimal(commission),
+            payoutAmount: new Decimal(amountToClient),
+            payoutDate: recordedAt,
+            payoutTransferred: amountToClient > 0,
+            payoutTransferredAt: amountToClient > 0 ? recordedAt : null,
+          },
+        });
+
+        if (amountToClient > 0) {
+          await creditClientSavings(
+            clientId,
+            amountToClient,
+            "cycle_completion",
+            `Susu cycle completed (commission GHS ${commission.toFixed(2)})`,
+            userId
+          );
         }
       }
 

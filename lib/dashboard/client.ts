@@ -115,10 +115,7 @@ export async function getClientCycleSummary(clientId: number): Promise<ClientCyc
   };
 }
 
-function getDaysInMonth(date: Date): number {
-  const d = new Date(date);
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-}
+const CYCLE_LENGTH = 31;
 
 export async function getClientCyclesPageData(clientId: number): Promise<ClientCyclesPageData> {
   const [cycleSummary, counts, cyclesRaw] = await Promise.all([
@@ -154,7 +151,7 @@ export async function getClientCyclesPageData(clientId: number): Promise<ClientC
 
   const cycles: ClientCycleWithDetails[] = cyclesRaw.map((c) => {
     const startDate = new Date(c.startDate);
-    const daysRequired = getDaysInMonth(startDate);
+    const daysRequired = CYCLE_LENGTH;
     const collected = c.dailyCollections;
     const daysCollected = collected.length;
     const cycleTotalCollected = collected.reduce(
@@ -512,11 +509,6 @@ export async function getClientLoanSchedule(clientId: number) {
   };
 }
 
-function getCycleLength(start: Date, end: Date): number {
-  const ms = end.getTime() - start.getTime();
-  return Math.round(ms / (24 * 60 * 60 * 1000)) + 1;
-}
-
 /** Client: Savings account, transactions, and quick-action data (active cycle, active loan, pending payouts) */
 export async function getClientSavingsPage(clientId: number) {
   const now = new Date();
@@ -546,8 +538,6 @@ export async function getClientSavingsPage(clientId: number) {
       where: {
         clientId,
         status: "active",
-        startDate: { lte: today },
-        endDate: { gte: today },
       },
       orderBy: { id: "desc" },
       select: {
@@ -592,7 +582,7 @@ export async function getClientSavingsPage(clientId: number) {
 
   let activeCycle: { id: number; remainingDays: number; remainingAmount: number } | null = null;
   if (activeCycleRow) {
-    const cycleLength = getCycleLength(activeCycleRow.startDate, activeCycleRow.endDate);
+    const cycleLength = CYCLE_LENGTH;
     const daysCollected = await prisma.dailyCollection.count({
       where: {
         susuCycleId: activeCycleRow.id,

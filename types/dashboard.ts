@@ -35,6 +35,7 @@ export interface AdminManagerMetrics {
   pendingApplications: number;
   portfolioValue: number;
   collectionsToday: number;
+  collectionsThisMonth: number;
   overdueLoans: number;
   totalDeposits: number;
   totalWithdrawals: number;

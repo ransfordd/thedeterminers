@@ -7,6 +7,7 @@ import type {
   AgentPerformanceRow,
   DashboardAlert,
 } from "@/types/dashboard";
+import { Prisma } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
 function toNum(d: Decimal | number | null | undefined): number {
@@ -70,6 +71,8 @@ async function computeAvgFullDayCollection(todayStart: Date): Promise<{
 export async function getAdminManagerMetrics(includeRevenue: boolean): Promise<AdminManagerMetrics> {
   const todayStart = getTodayStart();
   const monthStart = getMonthStart();
+  const nextMonthStart = new Date(monthStart);
+  nextMonthStart.setMonth(nextMonthStart.getMonth() + 1);
   const tomorrowStart = new Date(todayStart);
   tomorrowStart.setDate(tomorrowStart.getDate() + 1);
 
@@ -178,6 +181,26 @@ export async function getAdminManagerMetrics(includeRevenue: boolean): Promise<A
     toNum(collectionsTodaySusu._sum.collectedAmount) +
     toNum(collectionsTodayLoan._sum.amountPaid);
 
+  const [collectionsThisMonthSusu, collectionsThisMonthLoan] = await Promise.all([
+    prisma.dailyCollection.aggregate({
+      where: {
+        collectionDate: { gte: monthStart, lt: nextMonthStart },
+        collectionStatus: "collected",
+      },
+      _sum: { collectedAmount: true },
+    }),
+    prisma.loanPayment.aggregate({
+      where: {
+        paymentDate: { gte: monthStart, lt: nextMonthStart },
+        paymentStatus: "paid",
+      },
+      _sum: { amountPaid: true },
+    }),
+  ]);
+  const collectionsThisMonth =
+    toNum(collectionsThisMonthSusu._sum.collectedAmount) +
+    toNum(collectionsThisMonthLoan._sum.amountPaid);
+
   const { avgFullDay, daysWithPositive } = await computeAvgFullDayCollection(todayStart);
 
   const dailyCompletedCycles = await prisma.susuCycle.count({
@@ -199,6 +222,7 @@ export async function getAdminManagerMetrics(includeRevenue: boolean): Promise<A
     pendingApplications,
     portfolioValue: toNum(portfolioResult._sum.currentBalance),
     collectionsToday,
+    collectionsThisMonth,
     overdueLoans,
     totalDeposits: toNum(totalDepositsResult._sum.collectedAmount),
     totalWithdrawals:
@@ -301,6 +325,60 @@ export async function getRecentTransactions(limit = 20): Promise<RecentTransacti
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
   return merged.slice(0, limit);
+}
+
+export type MonthlyCollectionsRow = {
+  month: string; // YYYY-MM
+  label: string; // e.g. Mar 2026
+  susuTotal: number;
+  loanTotal: number;
+  total: number;
+};
+
+export async function getMonthlyCollectionsTotals(options?: { monthsBack?: number }): Promise<MonthlyCollectionsRow[]> {
+  const monthsBack = Math.min(48, Math.max(1, options?.monthsBack ?? 12));
+  const rows = await prisma.$queryRaw<
+    Array<{ month: string; susu_total: number | null; loan_total: number | null }>
+  >(Prisma.sql`
+    WITH susu AS (
+      SELECT TO_CHAR("collection_date", 'YYYY-MM') AS month,
+             SUM("collected_amount")::float AS susu_total
+      FROM "DailyCollection"
+      WHERE "collection_status" = 'collected'
+        AND "collection_date" >= (DATE_TRUNC('month', NOW()) - (${monthsBack}::int * INTERVAL '1 month'))
+      GROUP BY TO_CHAR("collection_date", 'YYYY-MM')
+    ),
+    loan AS (
+      SELECT TO_CHAR("payment_date", 'YYYY-MM') AS month,
+             SUM("amount_paid")::float AS loan_total
+      FROM "LoanPayment"
+      WHERE "payment_status" = 'paid'
+        AND "payment_date" IS NOT NULL
+        AND "payment_date" >= (DATE_TRUNC('month', NOW()) - (${monthsBack}::int * INTERVAL '1 month'))
+      GROUP BY TO_CHAR("payment_date", 'YYYY-MM')
+    )
+    SELECT COALESCE(susu.month, loan.month) AS month,
+           COALESCE(susu.susu_total, 0) AS susu_total,
+           COALESCE(loan.loan_total, 0) AS loan_total
+    FROM susu
+    FULL OUTER JOIN loan ON loan.month = susu.month
+    ORDER BY month DESC
+    LIMIT ${monthsBack};
+  `);
+
+  return rows.map((r) => {
+    const [y, m] = r.month.split("-").map(Number);
+    const label = new Date(y, m - 1, 1).toLocaleString("en-GB", { month: "short", year: "numeric" });
+    const susuTotal = Number(r.susu_total ?? 0) || 0;
+    const loanTotal = Number(r.loan_total ?? 0) || 0;
+    return {
+      month: r.month,
+      label,
+      susuTotal,
+      loanTotal,
+      total: susuTotal + loanTotal,
+    };
+  });
 }
 
 export async function getRecentApplications(limit = 5): Promise<RecentApplication[]> {
