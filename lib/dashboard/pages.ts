@@ -208,6 +208,26 @@ export async function getUsersList() {
   }));
 }
 
+/** Admin/Manager: lightweight agent options for filters (no aggregates) */
+export async function getAgentsFilterOptions(): Promise<
+  { id: number; agentCode: string; firstName: string; lastName: string }[]
+> {
+  const agents = await prisma.agent.findMany({
+    orderBy: { agentCode: "asc" },
+    select: {
+      id: true,
+      agentCode: true,
+      user: { select: { firstName: true, lastName: true } },
+    },
+  });
+  return agents.map((a) => ({
+    id: a.id,
+    agentCode: a.agentCode,
+    firstName: a.user.firstName,
+    lastName: a.user.lastName,
+  }));
+}
+
 /** Admin: active loans list with client and product info */
 export async function getActiveLoansList() {
   const loans = await prisma.loan.findMany({
@@ -573,6 +593,7 @@ export async function getAdminTransactionsPaged(options: {
   typeFilter: "all" | "susu" | "loan";
   fromDate?: Date;
   toDate?: Date;
+  agentId?: number;
   search?: string;
 }): Promise<AdminTransactionsPageResult> {
   const page = clampPage(options.page);
@@ -582,6 +603,7 @@ export async function getAdminTransactionsPaged(options: {
   const loanDateWhere = dateFieldRange("paymentDate", options.fromDate, options.toDate);
   const manualDateWhere = dateFieldRange("createdAt", options.fromDate, options.toDate);
   const typeFilter = options.typeFilter;
+  const agentId = options.agentId;
 
   const [susu, loan, manual] = await Promise.all([
     typeFilter !== "loan"
@@ -590,6 +612,14 @@ export async function getAdminTransactionsPaged(options: {
             receiptNumber: { not: null },
             collectionStatus: "collected",
             ...dateWhere,
+            ...(agentId != null
+              ? {
+                  OR: [
+                    { collectedById: agentId },
+                    { collectedById: null, susuCycle: { client: { agentId } } },
+                  ],
+                }
+              : {}),
           },
           orderBy: { collectionTime: "desc" },
           take: takePerSource,
@@ -605,6 +635,14 @@ export async function getAdminTransactionsPaged(options: {
             receiptNumber: { not: null },
             paymentStatus: "paid",
             ...loanDateWhere,
+            ...(agentId != null
+              ? {
+                  OR: [
+                    { collectedById: agentId },
+                    { collectedById: null, loan: { client: { agentId } } },
+                  ],
+                }
+              : {}),
           },
           orderBy: { paymentDate: "desc" },
           take: takePerSource,
@@ -616,7 +654,10 @@ export async function getAdminTransactionsPaged(options: {
       : [],
     typeFilter === "all"
       ? prisma.manualTransaction.findMany({
-          where: manualDateWhere,
+          where: {
+            ...manualDateWhere,
+            ...(agentId != null ? { client: { agentId } } : {}),
+          },
           orderBy: { createdAt: "desc" },
           take: takePerSource,
           include: {
@@ -798,6 +839,7 @@ export async function getManagerTransactionsPaged(options: {
   typeFilter: "all" | "susu" | "loan" | "savings";
   fromDate?: Date;
   toDate?: Date;
+  agentId?: number;
   clientId?: number | null;
   search?: string;
 }): Promise<ManagerTransactionsPageResult> {
@@ -806,6 +848,7 @@ export async function getManagerTransactionsPaged(options: {
   const takePerSource = Math.min(page * pageSize * 4, 1000);
   const clientId = options.clientId;
   const typeFilter = options.typeFilter;
+  const agentId = options.agentId;
   const dateWhere = dateFieldRange("collectionDate", options.fromDate, options.toDate);
   const loanDateWhere = dateFieldRange("paymentDate", options.fromDate, options.toDate);
   const savingsDateWhere = dateFieldRange("createdAt", options.fromDate, options.toDate);
@@ -818,6 +861,14 @@ export async function getManagerTransactionsPaged(options: {
             collectionStatus: "collected",
             ...dateWhere,
             ...(clientId != null ? { susuCycle: { clientId } } : {}),
+            ...(agentId != null
+              ? {
+                  OR: [
+                    { collectedById: agentId },
+                    { collectedById: null, susuCycle: { client: { agentId } } },
+                  ],
+                }
+              : {}),
           },
           orderBy: { collectionTime: "desc" },
           take: takePerSource,
@@ -834,6 +885,14 @@ export async function getManagerTransactionsPaged(options: {
             paymentStatus: "paid",
             ...loanDateWhere,
             ...(clientId != null ? { loan: { clientId } } : {}),
+            ...(agentId != null
+              ? {
+                  OR: [
+                    { collectedById: agentId },
+                    { collectedById: null, loan: { client: { agentId } } },
+                  ],
+                }
+              : {}),
           },
           orderBy: { paymentDate: "desc" },
           take: takePerSource,
@@ -849,6 +908,7 @@ export async function getManagerTransactionsPaged(options: {
             transactionType: "deposit",
             ...savingsDateWhere,
             ...(clientId != null ? { savingsAccount: { clientId } } : {}),
+            ...(agentId != null ? { savingsAccount: { client: { agentId } } } : {}),
           },
           orderBy: { createdAt: "desc" },
           take: takePerSource,

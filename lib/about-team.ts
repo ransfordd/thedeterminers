@@ -40,6 +40,12 @@ export const DEFAULT_ABOUT_TEAM_MEMBERS: Omit<AboutTeamMemberPublic, "id">[] = [
 export async function getAboutTeamMembers(): Promise<AboutTeamMemberPublic[]> {
   return unstable_cache(
     async (): Promise<AboutTeamMemberPublic[]> => {
+      if (process.env.NEXT_PHASE === "phase-production-build") {
+        return DEFAULT_ABOUT_TEAM_MEMBERS.map((m, i) => ({
+          id: -(i + 1),
+          ...m,
+        }));
+      }
       if (!process.env.DATABASE_URL?.trim()) {
         return DEFAULT_ABOUT_TEAM_MEMBERS.map((m, i) => ({
           id: -(i + 1),

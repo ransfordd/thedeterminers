@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
+import { EmergencyWithdrawalActions } from "./EmergencyWithdrawalActions";
 
 function toNum(d: unknown): number {
   if (d == null) return 0;
@@ -41,6 +42,7 @@ export default async function AdminEmergencyWithdrawalsPage() {
     { key: "daysCollected", header: "Days Collected" },
     { key: "status", header: "Status", render: (r: { status: string }) => <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40">{r.status}</span> },
     { key: "createdAt", header: "Requested", render: (r: { createdAt: Date }) => new Date(r.createdAt).toLocaleString("en-GB") },
+    { key: "actions", header: "Actions", render: (r: { id: number }) => <EmergencyWithdrawalActions requestId={r.id} /> },
   ];
 
   return (

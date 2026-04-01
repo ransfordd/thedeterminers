@@ -20,9 +20,11 @@ export async function createClient(
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
   const role = (session.user as { role?: string }).role;
-  if (role !== "business_admin" && role !== "manager") {
+  if (role !== "business_admin" && role !== "manager" && role !== "agent") {
     return { error: "Not authorized to create clients." };
   }
+  const userId = parseInt((session.user as { id?: string }).id ?? "0", 10);
+  if (!userId) return { error: "Unauthorized" };
 
   const username = (formData.get("username") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
@@ -42,9 +44,18 @@ export async function createClient(
   if (password.length < passwordMinLength) {
     return { error: `Password must be at least ${passwordMinLength} characters long.` };
   }
-  const agentId = agentIdRaw ? parseInt(agentIdRaw, 10) : NaN;
-  if (!agentId || isNaN(agentId)) {
-    return { error: "Please select an agent." };
+  let agentId: number;
+  if (role === "agent") {
+    const agent = await prisma.agent.findFirst({
+      where: { userId, status: "active" },
+      select: { id: true },
+    });
+    if (!agent) return { error: "Agent record not found or inactive." };
+    agentId = agent.id;
+  } else {
+    const parsed = agentIdRaw ? parseInt(agentIdRaw, 10) : NaN;
+    if (!parsed || isNaN(parsed)) return { error: "Please select an agent." };
+    agentId = parsed;
   }
   const parsedDailyDepositAmount = dailyDepositAmountRaw ? Number(dailyDepositAmountRaw) : NaN;
   if (!Number.isFinite(parsedDailyDepositAmount) || parsedDailyDepositAmount < 0) {
@@ -127,7 +138,9 @@ export async function createClient(
 
   revalidatePath("/admin/clients");
   revalidatePath("/manager/clients");
+  revalidatePath("/agent/clients");
   revalidatePath("/admin");
+  revalidatePath("/agent");
   return { success: true };
 }
 

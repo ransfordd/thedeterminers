@@ -187,3 +187,200 @@ export async function requestEmergencyWithdrawal(
   revalidatePath("/client/emergency-withdrawal");
   return { success: true };
 }
+
+export type ReviewEmergencyWithdrawalState = { success?: boolean; error?: string };
+
+export async function approveEmergencyWithdrawalRequest(
+  requestId: number
+): Promise<ReviewEmergencyWithdrawalState> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Not authenticated" };
+  const role = (session.user as { role?: string }).role;
+  if (role !== "business_admin" && role !== "manager") return { error: "Not authorized" };
+
+  const adminUserId = parseInt((session.user as { id?: string }).id ?? "0", 10);
+  if (!requestId || requestId <= 0) return { error: "Invalid request" };
+  if (!adminUserId) return { error: "Invalid admin session" };
+
+  const req = await prisma.emergencyWithdrawalRequest.findUnique({
+    where: { id: requestId },
+    include: {
+      client: { include: { user: true, agent: { include: { user: true } } } },
+      susuCycle: true,
+    },
+  });
+  if (!req) return { error: "Request not found" };
+  if (req.status !== "pending") return { error: `Request is not pending (current: ${req.status})` };
+
+  const now = new Date();
+  const reference = `EWR-${req.id}-${Date.now()}`;
+  const manualReference = `MAN-${reference}`;
+  const amount = Number(req.requestedAmount);
+  const commission = Number(req.commissionAmount);
+
+  await prisma.$transaction([
+    prisma.emergencyWithdrawalRequest.update({
+      where: { id: req.id },
+      data: {
+        status: "completed",
+        approvedById: adminUserId,
+        approvedAt: now,
+        completedAt: now,
+      },
+    }),
+    prisma.emergencyWithdrawalTransaction.create({
+      data: {
+        requestId: req.id,
+        clientId: req.clientId,
+        amount: new Decimal(amount),
+        commissionDeducted: new Decimal(commission),
+        netAmount: new Decimal(amount),
+        reference,
+      },
+    }),
+    prisma.manualTransaction.create({
+      data: {
+        clientId: req.clientId,
+        transactionType: "emergency_withdrawal",
+        amount: new Decimal(amount),
+        description: `Emergency withdrawal approved. Reference: ${reference}.`,
+        reference: manualReference,
+        processedById: adminUserId,
+      },
+    }),
+  ]);
+
+  const clientName = `${req.client.user.firstName ?? ""} ${req.client.user.lastName ?? ""}`.trim() || "Client";
+  const agentUserId = req.client.agent?.userId ?? null;
+
+  // In-app notifications: client + agent + admin
+  const notifRows: Array<{ userId: number; title: string; message: string }> = [
+    {
+      userId: req.client.userId,
+      title: "Emergency withdrawal approved",
+      message: `Your emergency withdrawal request (GHS ${amount.toFixed(2)}) has been approved and completed. Reference: ${reference}.`,
+    },
+    {
+      userId: adminUserId,
+      title: "Emergency withdrawal completed",
+      message: `Emergency withdrawal for ${clientName} (GHS ${amount.toFixed(2)}) was approved and marked completed. Reference: ${reference}.`,
+    },
+  ];
+  if (agentUserId) {
+    notifRows.push({
+      userId: agentUserId,
+      title: "Client emergency withdrawal completed",
+      message: `Emergency withdrawal for ${clientName} (GHS ${amount.toFixed(2)}) was approved and marked completed. Reference: ${reference}.`,
+    });
+  }
+  await prisma.notification.createMany({
+    data: notifRows.map((n) => ({
+      userId: n.userId,
+      notificationType: "system_alert",
+      title: n.title,
+      message: n.message,
+    })),
+  });
+
+  // SMS: client only
+  await sendSmsToUserIds(
+    prisma,
+    [req.client.userId],
+    await buildPremiumSms({
+      clientName,
+      eventLine: `Your emergency withdrawal request of GHS ${amount.toFixed(2)} has been approved and completed.`,
+      reference: manualReference,
+      date: now,
+    })
+  );
+
+  revalidatePath("/admin/emergency-withdrawals");
+  revalidatePath("/admin");
+  revalidatePath("/manager/emergency-withdrawals");
+  revalidatePath("/manager");
+  return { success: true };
+}
+
+export async function rejectEmergencyWithdrawalRequest(
+  requestId: number,
+  reason: string
+): Promise<ReviewEmergencyWithdrawalState> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Not authenticated" };
+  const role = (session.user as { role?: string }).role;
+  if (role !== "business_admin" && role !== "manager") return { error: "Not authorized" };
+
+  const adminUserId = parseInt((session.user as { id?: string }).id ?? "0", 10);
+  if (!requestId || requestId <= 0) return { error: "Invalid request" };
+  const trimmedReason = (reason ?? "").trim();
+  if (!trimmedReason) return { error: "Rejection reason is required" };
+
+  const req = await prisma.emergencyWithdrawalRequest.findUnique({
+    where: { id: requestId },
+    include: {
+      client: { include: { user: true, agent: { include: { user: true } } } },
+    },
+  });
+  if (!req) return { error: "Request not found" };
+  if (req.status !== "pending") return { error: `Request is not pending (current: ${req.status})` };
+
+  const now = new Date();
+  await prisma.emergencyWithdrawalRequest.update({
+    where: { id: req.id },
+    data: {
+      status: "rejected",
+      rejectionReason: trimmedReason,
+      approvedById: adminUserId,
+      approvedAt: now,
+    },
+  });
+
+  const amount = Number(req.requestedAmount);
+  const clientName = `${req.client.user.firstName ?? ""} ${req.client.user.lastName ?? ""}`.trim() || "Client";
+  const agentUserId = req.client.agent?.userId ?? null;
+
+  const notifRows: Array<{ userId: number; title: string; message: string }> = [
+    {
+      userId: req.client.userId,
+      title: "Emergency withdrawal rejected",
+      message: `Your emergency withdrawal request (GHS ${amount.toFixed(2)}) has been rejected. Reason: ${trimmedReason}`,
+    },
+    {
+      userId: adminUserId,
+      title: "Emergency withdrawal rejected",
+      message: `Emergency withdrawal for ${clientName} (GHS ${amount.toFixed(2)}) was rejected. Reason: ${trimmedReason}`,
+    },
+  ];
+  if (agentUserId) {
+    notifRows.push({
+      userId: agentUserId,
+      title: "Client emergency withdrawal rejected",
+      message: `Emergency withdrawal for ${clientName} (GHS ${amount.toFixed(2)}) was rejected. Reason: ${trimmedReason}`,
+    });
+  }
+  await prisma.notification.createMany({
+    data: notifRows.map((n) => ({
+      userId: n.userId,
+      notificationType: "system_alert",
+      title: n.title,
+      message: n.message,
+    })),
+  });
+
+  // SMS: client only
+  await sendSmsToUserIds(
+    prisma,
+    [req.client.userId],
+    await buildPremiumSms({
+      clientName,
+      eventLine: `Your emergency withdrawal request of GHS ${amount.toFixed(2)} has been rejected. Reason: ${trimmedReason}`,
+      date: now,
+    })
+  );
+
+  revalidatePath("/admin/emergency-withdrawals");
+  revalidatePath("/admin");
+  revalidatePath("/manager/emergency-withdrawals");
+  revalidatePath("/manager");
+  return { success: true };
+}

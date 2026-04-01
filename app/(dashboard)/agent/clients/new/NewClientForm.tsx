@@ -6,8 +6,6 @@ import { createClient, type CreateClientState } from "@/app/actions/clients";
 
 const initialState: CreateClientState = {};
 
-type AgentOption = { id: number; agentCode: string; firstName: string; lastName: string };
-
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -21,7 +19,7 @@ function SubmitButton() {
   );
 }
 
-export function NewClientForm({ agents }: { agents: AgentOption[] }) {
+export function NewClientForm() {
   const [state, formAction] = useActionState(createClient, initialState);
   const [depositType, setDepositType] = useState<"fixed_amount" | "flexible_amount">("fixed_amount");
   const fixedAmountRef = useRef("20");
@@ -36,7 +34,10 @@ export function NewClientForm({ agents }: { agents: AgentOption[] }) {
       )}
       {state?.success && (
         <div className="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 text-sm">
-          Client created successfully. <a href="/admin/clients" className="font-medium underline">Back to clients</a>
+          Client created successfully.{" "}
+          <a href="/agent/clients" className="font-medium underline">
+            Back to clients
+          </a>
         </div>
       )}
 
@@ -122,25 +123,6 @@ export function NewClientForm({ agents }: { agents: AgentOption[] }) {
         </div>
       </div>
 
-      <div>
-        <label htmlFor="agentId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Assigned Agent <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="agentId"
-          name="agentId"
-          required
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
-        >
-          <option value="">Select an Agent</option>
-          {agents.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.agentCode} – {a.firstName} {a.lastName}
-            </option>
-          ))}
-        </select>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -224,7 +206,7 @@ export function NewClientForm({ agents }: { agents: AgentOption[] }) {
 
       <div className="flex gap-3 pt-2">
         <a
-          href="/admin/clients"
+          href="/agent/clients"
           className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           Cancel
@@ -234,3 +216,4 @@ export function NewClientForm({ agents }: { agents: AgentOption[] }) {
     </form>
   );
 }
+

@@ -34,6 +34,9 @@ function businessInfoFromStaticDefaults(): BusinessInfo {
 export async function getBusinessInfoFromDb(): Promise<BusinessInfo> {
   return unstable_cache(
     async (): Promise<BusinessInfo> => {
+      if (process.env.NEXT_PHASE === "phase-production-build") {
+        return businessInfoFromStaticDefaults();
+      }
       if (!process.env.DATABASE_URL?.trim()) {
         return businessInfoFromStaticDefaults();
       }

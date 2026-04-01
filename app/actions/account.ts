@@ -23,12 +23,14 @@ export async function updateProfile(
   const userId = parseInt((session.user as { id?: string }).id ?? "0", 10);
   if (!userId) return { error: "Invalid user" };
 
+  const username = (formData.get("username") as string)?.trim();
   const firstName = (formData.get("firstName") as string)?.trim();
   const lastName = (formData.get("lastName") as string)?.trim();
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   const phone = (formData.get("phone") as string)?.trim() ?? "";
   const address = (formData.get("address") as string)?.trim() || null;
 
+  if (!username) return { error: "Username is required" };
   if (!firstName || !lastName) return { error: "First name and last name are required" };
   if (!email) return { error: "Email is required" };
 
@@ -37,9 +39,15 @@ export async function updateProfile(
   });
   if (existing) return { error: "Email is already in use by another account" };
 
+  const usernameExisting = await prisma.user.findFirst({
+    where: { username, id: { not: userId } },
+    select: { id: true },
+  });
+  if (usernameExisting) return { error: "Username is already in use by another account" };
+
   await prisma.user.update({
     where: { id: userId },
-    data: { firstName, lastName, email, phone, address: address ?? undefined },
+    data: { username, firstName, lastName, email, phone, address: address ?? undefined },
   });
   revalidatePath("/account/settings");
   revalidatePath("/dashboard");

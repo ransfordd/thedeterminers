@@ -8,7 +8,7 @@ const initialState: AccountProfileState = {};
 export function AccountSettingsForm({
   user,
 }: {
-  user: { firstName: string; lastName: string; email: string; phone: string; address: string | null };
+  user: { username: string; firstName: string; lastName: string; email: string; phone: string; address: string | null };
 }) {
   const [state, formAction] = useActionState(updateProfile, initialState);
 
@@ -51,6 +51,19 @@ export function AccountSettingsForm({
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           />
         </div>
+      </div>
+      <div>
+        <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Username
+        </label>
+        <input
+          id="username"
+          name="username"
+          type="text"
+          required
+          defaultValue={user.username}
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
+        />
       </div>
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

@@ -4,14 +4,23 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 export interface ManagerTransactionFiltersProps {
   clients: { id: number; clientCode: string; clientName: string }[];
+  agents: { id: number; agentCode: string; firstName: string; lastName: string }[];
 }
 
-export function ManagerTransactionFilters({ clients }: ManagerTransactionFiltersProps) {
+function todayIsoDate(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+export function ManagerTransactionFilters({ clients, agents }: ManagerTransactionFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const type = searchParams.get("type") || "all";
-  const fromDate = searchParams.get("from_date") || "";
-  const toDate = searchParams.get("to_date") || "";
+  const agentId = searchParams.get("agent_id") || "";
+  const day = searchParams.get("day") || todayIsoDate();
   const clientId = searchParams.get("client_id") || "";
   const q = searchParams.get("q") || "";
   const pageSize = searchParams.get("page_size") || "25";
@@ -22,14 +31,14 @@ export function ManagerTransactionFilters({ clients }: ManagerTransactionFilters
     const fd = new FormData(form);
     const params = new URLSearchParams();
     const t = (fd.get("type") as string) || "all";
-    const from = (fd.get("from_date") as string) || "";
-    const to = (fd.get("to_date") as string) || "";
+    const a = (fd.get("agent_id") as string) || "";
+    const d = ((fd.get("day") as string) || "").trim();
     const cid = (fd.get("client_id") as string) || "";
     const search = ((fd.get("q") as string) || "").trim();
     const ps = (fd.get("page_size") as string) || "25";
     if (t && t !== "all") params.set("type", t);
-    if (from) params.set("from_date", from);
-    if (to) params.set("to_date", to);
+    if (a) params.set("agent_id", a);
+    if (d) params.set("day", d);
     if (cid) params.set("client_id", cid);
     if (search) params.set("q", search);
     if (ps && ps !== "25") params.set("page_size", ps);
@@ -56,26 +65,32 @@ export function ManagerTransactionFilters({ clients }: ManagerTransactionFilters
         </select>
       </div>
       <div>
-        <label htmlFor="from_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          From Date
+        <label htmlFor="agent_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Agent
         </label>
-        <input
-          id="from_date"
-          name="from_date"
-          type="date"
-          defaultValue={fromDate}
+        <select
+          id="agent_id"
+          name="agent_id"
+          defaultValue={agentId}
           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
-        />
+        >
+          <option value="">All agents</option>
+          {agents.map((a) => (
+            <option key={a.id} value={String(a.id)}>
+              {a.agentCode} – {a.firstName} {a.lastName}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
-        <label htmlFor="to_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          To Date
+        <label htmlFor="day" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Day
         </label>
         <input
-          id="to_date"
-          name="to_date"
+          id="day"
+          name="day"
           type="date"
-          defaultValue={toDate}
+          defaultValue={day}
           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
         />
       </div>

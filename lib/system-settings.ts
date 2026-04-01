@@ -30,14 +30,22 @@ const SYSTEM_SETTING_KEYS = [
 
 /** Plain object only — unstable_cache serializes cache entries; Map becomes a broken {}. */
 async function fetchSystemSettingsRecord(keys: string[]): Promise<Record<string, string>> {
-  const { prisma } = await import("@/lib/db");
-  const rows = await prisma.systemSetting.findMany({
-    where: { settingKey: { in: keys } },
-    select: { settingKey: true, settingValue: true },
-  });
-  const out: Record<string, string> = {};
-  for (const r of rows) out[r.settingKey] = r.settingValue;
-  return out;
+  // During Docker/Coolify build, DB may be unreachable; return empty record so pages can fall back.
+  // `next build` sets NEXT_PHASE=phase-production-build.
+  if (process.env.NEXT_PHASE === "phase-production-build") return {};
+  if (!process.env.DATABASE_URL?.trim()) return {};
+  try {
+    const { prisma } = await import("@/lib/db");
+    const rows = await prisma.systemSetting.findMany({
+      where: { settingKey: { in: keys } },
+      select: { settingKey: true, settingValue: true },
+    });
+    const out: Record<string, string> = {};
+    for (const r of rows) out[r.settingKey] = r.settingValue;
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 /**

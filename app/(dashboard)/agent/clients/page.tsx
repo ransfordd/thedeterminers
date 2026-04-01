@@ -84,6 +84,7 @@ export default async function AgentClientsPage() {
         icon={<i className="fas fa-users" />}
         backHref="/agent"
         variant="primary"
+        primaryAction={{ href: "/agent/clients/new", label: "Add New Client" }}
       />
       <ModernCard
         title={`Client List (${data.assignedClients.length} clients)`}

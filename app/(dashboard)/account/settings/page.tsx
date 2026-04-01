@@ -91,6 +91,7 @@ export default async function AccountSettingsPage() {
       >
         <AccountSettingsForm
           user={{
+            username: user.username,
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,

@@ -33,7 +33,7 @@ export default async function DashboardLayout({
     prisma.systemSetting.findMany({
       where: { settingKey: { in: ["app_name", "app_logo"] } },
       select: { settingKey: true, settingValue: true },
-    }),
+    }).catch(() => []),
     getCurrencyDisplay(),
   ]);
   const profileImageRaw = (currentUser?.profileImage ?? session.user.image ?? null) ?? null;

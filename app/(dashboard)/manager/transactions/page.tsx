@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { Suspense } from "react";
 import { authOptions } from "@/lib/auth";
-import { getManagerTransactionsPaged } from "@/lib/dashboard/pages";
+import { getAgentsFilterOptions, getManagerTransactionsPaged } from "@/lib/dashboard/pages";
 import { getClientsList } from "@/lib/dashboard";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
@@ -17,6 +17,8 @@ export default async function ManagerTransactionsPage({
     type?: string;
     from_date?: string;
     to_date?: string;
+    agent_id?: string;
+    day?: string;
     client_id?: string;
     page?: string;
     page_size?: string;
@@ -34,25 +36,36 @@ export default async function ManagerTransactionsPage({
   const typeFilter = (params.type === "susu" || params.type === "loan" || params.type === "savings"
     ? params.type
     : "all") as "all" | "susu" | "loan" | "savings";
-  const fromDate = params.from_date ? new Date(params.from_date + "T00:00:00Z") : undefined;
-  const toDate = params.to_date ? new Date(params.to_date + "T23:59:59Z") : undefined;
+  const agentIdParsed = params.agent_id ? parseInt(params.agent_id, 10) : NaN;
+  const agentId = Number.isFinite(agentIdParsed) && agentIdParsed > 0 ? agentIdParsed : undefined;
+
+  const dayRaw = params.day?.trim() ?? "";
+  const dayValid = /^\d{4}-\d{2}-\d{2}$/.test(dayRaw);
+  const fromDate = dayValid
+    ? new Date(dayRaw + "T00:00:00Z")
+    : (params.from_date ? new Date(params.from_date + "T00:00:00Z") : undefined);
+  const toDate = dayValid
+    ? new Date(dayRaw + "T23:59:59Z")
+    : (params.to_date ? new Date(params.to_date + "T23:59:59Z") : undefined);
   const clientIdParsed = params.client_id ? parseInt(params.client_id, 10) : NaN;
   const clientId = Number.isFinite(clientIdParsed) ? clientIdParsed : null;
   const page = params.page ? Math.max(1, parseInt(params.page, 10) || 1) : 1;
   const pageSize = Math.min(100, Math.max(10, params.page_size ? parseInt(params.page_size, 10) || 25 : 25));
   const q = params.q?.trim() ?? "";
 
-  const [{ rows: transactions, hasMore }, clientsList] = await Promise.all([
+  const [{ rows: transactions, hasMore }, clientsList, agents] = await Promise.all([
     getManagerTransactionsPaged({
       page,
       pageSize,
       typeFilter,
       fromDate,
       toDate,
+      agentId,
       clientId,
       search: q || undefined,
     }),
     getClientsList(),
+    getAgentsFilterOptions(),
   ]);
 
   const clients = clientsList.map((c) => ({
@@ -118,7 +131,7 @@ export default async function ManagerTransactionsPage({
         icon={<i className="fas fa-filter" />}
       >
         <Suspense fallback={<div className="text-sm text-gray-500">Loading filters…</div>}>
-          <ManagerTransactionFilters clients={clients} />
+          <ManagerTransactionFilters clients={clients} agents={agents} />
         </Suspense>
       </ModernCard>
       <ModernCard

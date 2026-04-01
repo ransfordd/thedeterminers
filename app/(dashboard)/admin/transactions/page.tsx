@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { authOptions } from "@/lib/auth";
-import { getAdminTransactionsPaged } from "@/lib/dashboard/pages";
+import { getAdminTransactionsPaged, getAgentsFilterOptions } from "@/lib/dashboard/pages";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { getCurrencyDisplay } from "@/lib/system-settings";
@@ -19,6 +19,8 @@ export default async function AdminTransactionsPage({
     type?: string;
     from_date?: string;
     to_date?: string;
+    agent_id?: string;
+    day?: string;
     page?: string;
     page_size?: string;
     q?: string;
@@ -31,22 +33,33 @@ export default async function AdminTransactionsPage({
 
   const params = await searchParams;
   const typeFilter = (params.type === "susu" || params.type === "loan" ? params.type : "all") as "all" | "susu" | "loan";
-  const fromDate = params.from_date ? new Date(params.from_date + "T00:00:00Z") : undefined;
-  const toDate = params.to_date ? new Date(params.to_date + "T23:59:59Z") : undefined;
+  const agentIdParsed = params.agent_id ? parseInt(params.agent_id, 10) : NaN;
+  const agentId = Number.isFinite(agentIdParsed) && agentIdParsed > 0 ? agentIdParsed : undefined;
+
+  const dayRaw = params.day?.trim() ?? "";
+  const dayValid = /^\d{4}-\d{2}-\d{2}$/.test(dayRaw);
+  const fromDate = dayValid
+    ? new Date(dayRaw + "T00:00:00Z")
+    : (params.from_date ? new Date(params.from_date + "T00:00:00Z") : undefined);
+  const toDate = dayValid
+    ? new Date(dayRaw + "T23:59:59Z")
+    : (params.to_date ? new Date(params.to_date + "T23:59:59Z") : undefined);
   const page = params.page ? Math.max(1, parseInt(params.page, 10) || 1) : 1;
   const pageSize = Math.min(100, Math.max(10, params.page_size ? parseInt(params.page_size, 10) || 25 : 25));
   const q = params.q?.trim() ?? "";
 
-  const [{ rows: transactions, hasMore }, display] = await Promise.all([
+  const [{ rows: transactions, hasMore }, display, agents] = await Promise.all([
     getAdminTransactionsPaged({
       page,
       pageSize,
       typeFilter,
       fromDate,
       toDate,
+      agentId,
       search: q || undefined,
     }),
     getCurrencyDisplay(),
+    getAgentsFilterOptions(),
   ]);
   const backHref = role === "manager" ? "/manager" : "/admin";
   const serializable = transactions.map((t) => ({
@@ -75,7 +88,7 @@ export default async function AdminTransactionsPage({
         icon={<i className="fas fa-filter" />}
       >
         <Suspense fallback={<div className="text-sm text-gray-500">Loading filters…</div>}>
-          <TransactionFilters />
+          <TransactionFilters agents={agents} />
         </Suspense>
       </ModernCard>
 
