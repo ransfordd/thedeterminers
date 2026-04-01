@@ -46,7 +46,6 @@ services:
         condition: service_healthy
     command: >
       sh -c "npx prisma db push &&
-             npx prisma db seed &&
              exec node server.js"
 
 volumes:

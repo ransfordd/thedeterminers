@@ -134,10 +134,18 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
 
   const defaultPassword = (p: string) => hash(p, 10);
 
+  async function findSeedUser(e: { email: string; username: string }) {
+    return prisma.user.findFirst({
+      where: {
+        OR: [{ email: e.email }, { username: e.username }],
+      },
+    });
+  }
+
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@example.com";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
   const adminHash = await defaultPassword(adminPassword);
-  const adminExisting = await prisma.user.findUnique({ where: { email: adminEmail } });
+  const adminExisting = await findSeedUser({ email: adminEmail, username: "admin" });
   if (adminExisting) {
     // Do not reset password on re-seed (e.g. every Docker/Coolify container start); preserve admin-chosen passwords.
     await prisma.user.update({
@@ -161,7 +169,7 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
 
   const managerEmail = process.env.SEED_MANAGER_EMAIL ?? "manager@example.com";
   const managerHash = await defaultPassword(process.env.SEED_MANAGER_PASSWORD ?? "manager123");
-  const managerExisting = await prisma.user.findUnique({ where: { email: managerEmail } });
+  const managerExisting = await findSeedUser({ email: managerEmail, username: "manager" });
   if (!managerExisting) {
     await prisma.user.create({
       data: {
@@ -179,7 +187,7 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
 
   const agentEmail = process.env.SEED_AGENT_EMAIL ?? "agent@example.com";
   const agentHash = await defaultPassword(process.env.SEED_AGENT_PASSWORD ?? "agent123");
-  let agentUser = await prisma.user.findUnique({ where: { email: agentEmail } });
+  let agentUser = await findSeedUser({ email: agentEmail, username: "agent" });
   if (!agentUser) {
     agentUser = await prisma.user.create({
       data: {
@@ -193,6 +201,8 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
         status: "active",
       },
     });
+  } else {
+    await prisma.user.update({ where: { id: agentUser.id }, data: { status: "active" } }).catch(() => {});
   }
   const agentRecord = await prisma.agent.findFirst({ where: { userId: agentUser.id } });
   if (!agentRecord) {
@@ -211,7 +221,7 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
   const clientHash = await defaultPassword(process.env.SEED_CLIENT_PASSWORD ?? "client123");
   const agentForClient = await prisma.agent.findFirst({ where: { agentCode: "AG001" } });
   if (!agentForClient) throw new Error("Agent AG001 required for client seed");
-  let clientUser = await prisma.user.findUnique({ where: { email: clientEmail } });
+  let clientUser = await findSeedUser({ email: clientEmail, username: "client" });
   if (!clientUser) {
     clientUser = await prisma.user.create({
       data: {
@@ -225,6 +235,8 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
         status: "active",
       },
     });
+  } else {
+    await prisma.user.update({ where: { id: clientUser.id }, data: { status: "active" } }).catch(() => {});
   }
   const clientRecord = await prisma.client.findFirst({ where: { userId: clientUser.id } });
   if (!clientRecord) {
