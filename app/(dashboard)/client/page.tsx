@@ -31,7 +31,7 @@ export default async function ClientDashboardPage() {
     );
   }
 
-  const { client, cycleSummary, activeLoan, savingsBalance, totalWithdrawals, recentActivity, susuTrackerCollections, emergencyWithdrawalEligible } = data;
+  const { client, cycleSummary, activeLoan, savingsBalance, totalWithdrawals, recentActivity, susuTrackerCollections, emergencyWithdrawalEligible, emergencyWithdrawnInCycle } = data;
   const name = session.user.name ?? "Client";
   const depositType = client.depositType;
   const activeCycle = cycleSummary.activeCycle;
@@ -73,7 +73,13 @@ export default async function ClientDashboardPage() {
           Statistics
         </SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <StatCard icon={<i className="fas fa-piggy-bank text-blue-600" />} value={formatCurrencyFromGhs(cycleSummary.totalCollectedAllTimeNet ?? 0, display)} label="Total Collected" sublabel={`${cycleSummary.daysCollectedAllTime ?? 0} collections`} variant="primary" />
+          <StatCard
+            icon={<i className="fas fa-piggy-bank text-blue-600" />}
+            value={formatCurrencyFromGhs(cycleSummary.totalCollectedAllTimeNet ?? 0, display)}
+            label="Total Collected"
+            sublabel={`${cycleSummary.daysCollectedAllTime ?? 0} collections (net)`}
+            variant="primary"
+          />
           <StatCard icon={<i className="fas fa-check-circle text-green-600" />} value={(cycleSummary.completedCycles ?? 0).toLocaleString()} label="Cycles Completed" sublabel="Click to view details" variant="success" href="/client/cycles-completed" />
           <StatCard icon={<i className="fas fa-money-bill-wave text-amber-600" />} value={formatCurrencyFromGhs(totalWithdrawals ?? 0, display)} label="Total Withdrawals" sublabel="All time withdrawals" variant="warning" />
           <StatCard icon={<i className="fas fa-piggy-bank text-green-600" />} value={formatCurrencyFromGhs(savingsBalance ?? 0, display)} label="Savings Balance" sublabel="Click to manage savings" variant="success" href="/client/savings" />
@@ -149,6 +155,7 @@ export default async function ClientDashboardPage() {
       <SusuCollectionTracker
         activeCycle={activeCycle ? { id: activeCycle.id, startDate: activeCycle.startDate.toISOString(), endDate: activeCycle.endDate.toISOString(), dailyAmount: activeCycle.dailyAmount, isFlexible: activeCycle.isFlexible, averageDailyAmount: activeCycle.averageDailyAmount } : null}
         collections={susuTrackerCollections?.map((c) => ({ dayNumber: c.dayNumber, collectedAmount: Number(c.collectedAmount), collectionDate: c.collectionDate.toISOString() })) ?? null}
+        emergencyWithdrawnAmount={emergencyWithdrawnInCycle ?? 0}
         depositType={depositType}
       />
 

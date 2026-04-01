@@ -21,6 +21,7 @@ type ActiveCycle = {
 type SusuCollectionTrackerProps = {
   activeCycle: ActiveCycle | null;
   collections: TrackerCollection[] | null;
+  emergencyWithdrawnAmount?: number;
   depositType: string;
 };
 
@@ -36,6 +37,7 @@ const FALLBACK_CYCLE_DAYS = 31;
 export function SusuCollectionTracker({
   activeCycle,
   collections,
+  emergencyWithdrawnAmount = 0,
   depositType,
 }: SusuCollectionTrackerProps) {
   const display = useCurrencyDisplay();
@@ -66,10 +68,11 @@ export function SusuCollectionTracker({
     }
   });
   const collectionsMade = Object.keys(collectionByDay).length;
-  const totalCollected =
+  const totalCollectedGross =
     depositType === "flexible_amount"
       ? (collections ?? []).reduce((sum, c) => sum + c.collectedAmount, 0)
       : collectionsMade * activeCycle.dailyAmount;
+  const totalCollected = Math.max(0, totalCollectedGross - (Number.isFinite(emergencyWithdrawnAmount) ? emergencyWithdrawnAmount : 0));
   const percentage = (collectionsMade / cycleLength) * 100;
 
   return (
@@ -95,6 +98,11 @@ export function SusuCollectionTracker({
               <p className="mb-0 text-sm">
                 <span className="font-medium">Total collected:</span> {formatCurrencyFromGhs(totalCollected, display)}
               </p>
+              {emergencyWithdrawnAmount > 0 && (
+                <p className="mb-0 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Includes emergency withdrawals: -{formatCurrencyFromGhs(emergencyWithdrawnAmount, display)}
+                </p>
+              )}
             </div>
             <div>
               <h6 className="mb-2 font-medium text-gray-700 dark:text-gray-300">Progress</h6>

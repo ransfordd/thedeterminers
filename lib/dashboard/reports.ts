@@ -716,6 +716,8 @@ export async function getAgentReportData(
 
 export type ManagerReportFinancialSummary = {
   totalCollections: number;
+  emergencyWithdrawals: number;
+  netCollections: number;
   totalLoanPayments: number;
   totalPayouts: number;
   totalManualWithdrawals: number;
@@ -761,6 +763,7 @@ export async function getManagerReportData(fromDate: Date, toDate: Date): Promis
     totalLoanPaymentsAgg,
     payoutsAgg,
     manualWithdrawalsAgg,
+    emergencyWithdrawalsAgg,
     cycleTypeData,
     agents,
   ] = await Promise.all([
@@ -780,6 +783,10 @@ export async function getManagerReportData(fromDate: Date, toDate: Date): Promis
       where: { transactionType: "withdrawal", createdAt: dateFilter },
       _sum: { amount: true },
     }),
+    prisma.manualTransaction.aggregate({
+      where: { transactionType: "emergency_withdrawal", createdAt: dateFilter },
+      _sum: { amount: true },
+    }),
     prisma.client.groupBy({
       by: ["depositType"],
       where: { status: "active" },
@@ -792,6 +799,8 @@ export async function getManagerReportData(fromDate: Date, toDate: Date): Promis
   ]);
 
   const totalCollections = toNum(totalCollectionsAgg._sum.collectedAmount);
+  const emergencyWithdrawals = toNum(emergencyWithdrawalsAgg._sum.amount);
+  const netCollections = Math.max(0, totalCollections - emergencyWithdrawals);
   const totalLoanPayments = toNum(totalLoanPaymentsAgg._sum.amountPaid);
   const totalPayouts = toNum(payoutsAgg._sum.payoutAmount);
   const totalManualWithdrawals = toNum(manualWithdrawalsAgg._sum.amount);
@@ -902,6 +911,8 @@ export async function getManagerReportData(fromDate: Date, toDate: Date): Promis
     toDate,
     financialSummary: {
       totalCollections,
+      emergencyWithdrawals,
+      netCollections,
       totalLoanPayments,
       totalPayouts,
       totalManualWithdrawals,

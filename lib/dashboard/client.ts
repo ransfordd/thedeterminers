@@ -33,19 +33,33 @@ export async function getClientCycleSummary(clientId: number): Promise<ClientCyc
   let daysCollected = 0;
 
   if (activeCycle) {
-    const agg = await prisma.dailyCollection.aggregate({
-      where: {
-        susuCycleId: activeCycle.id,
-        collectionStatus: "collected",
-      },
-      _sum: { collectedAmount: true },
-      _count: { id: true },
-    });
-    totalCollectedInCycle = toNum(agg._sum.collectedAmount);
+    const [agg, emergencyInCycleAgg] = await Promise.all([
+      prisma.dailyCollection.aggregate({
+        where: {
+          susuCycleId: activeCycle.id,
+          collectionStatus: "collected",
+        },
+        _sum: { collectedAmount: true },
+        _count: { id: true },
+      }),
+      prisma.emergencyWithdrawalTransaction.aggregate({
+        where: {
+          request: {
+            clientId,
+            susuCycleId: activeCycle.id,
+            status: "completed",
+          },
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+    const totalCollectedInCycleGross = toNum(agg._sum.collectedAmount);
+    const emergencyWithdrawnInCycle = toNum(emergencyInCycleAgg._sum.amount);
+    totalCollectedInCycle = Math.max(0, totalCollectedInCycleGross - emergencyWithdrawnInCycle);
     daysCollected = agg._count.id;
   }
 
-  const [allTimeAgg, completedCycles, agentFeesSum] = await Promise.all([
+  const [allTimeAgg, completedCycles, agentFeesSum, emergencyAllTimeAgg] = await Promise.all([
     prisma.dailyCollection.aggregate({
       where: {
         susuCycle: { clientId },
@@ -61,11 +75,21 @@ export async function getClientCycleSummary(clientId: number): Promise<ClientCyc
       where: { clientId, status: "completed" },
       _sum: { agentFee: true },
     }),
+    prisma.emergencyWithdrawalTransaction.aggregate({
+      where: {
+        request: {
+          clientId,
+          status: "completed",
+        },
+      },
+      _sum: { amount: true },
+    }),
   ]);
 
   const totalCollectedAllTime = toNum(allTimeAgg._sum.collectedAmount);
   const totalAgentFees = toNum(agentFeesSum._sum.agentFee);
-  const totalCollectedAllTimeNet = Math.max(0, totalCollectedAllTime - totalAgentFees);
+  const totalEmergencyWithdrawnAllTime = toNum(emergencyAllTimeAgg._sum.amount);
+  const totalCollectedAllTimeNet = Math.max(0, totalCollectedAllTime - totalAgentFees - totalEmergencyWithdrawnAllTime);
 
   return {
     activeCycle: activeCycle
@@ -232,6 +256,23 @@ export async function getClientDashboardData(userId: number) {
 
   const savingsBalance = savingsAccount ? toNum(savingsAccount.balance) : 0;
   const totalWithdrawals = toNum(totalWithdrawalsAgg._sum.amount);
+  const emergencyWithdrawnInCycle =
+    cycleSummary.activeCycle?.id != null
+      ? toNum(
+          (
+            await prisma.emergencyWithdrawalTransaction.aggregate({
+              where: {
+                request: {
+                  clientId,
+                  susuCycleId: cycleSummary.activeCycle.id,
+                  status: "completed",
+                },
+              },
+              _sum: { amount: true },
+            })
+          )._sum.amount
+        )
+      : 0;
 
   const emergencyEligible =
     !!cycleSummary.activeCycle &&
@@ -268,6 +309,7 @@ export async function getClientDashboardData(userId: number) {
     totalWithdrawals,
     recentActivity,
     susuTrackerCollections,
+    emergencyWithdrawnInCycle,
     emergencyWithdrawalEligible,
   };
 }

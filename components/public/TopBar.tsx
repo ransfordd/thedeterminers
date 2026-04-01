@@ -2,7 +2,7 @@ import type { BusinessInfo } from "@/lib/public-business";
 
 export function TopBar({ businessInfo }: { businessInfo: BusinessInfo }) {
   return (
-    <div className="fixed top-0 left-0 right-0 z-[1001] bg-transparent text-white text-sm py-2 px-4">
+    <div className="fixed top-0 left-0 right-0 z-[900] bg-transparent text-white text-sm py-2 px-4">
       <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-4">
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2">

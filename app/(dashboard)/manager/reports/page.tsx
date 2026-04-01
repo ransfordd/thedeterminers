@@ -54,9 +54,9 @@ export default async function ManagerReportsPage({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           icon={<i className="fas fa-arrow-down text-green-600" />}
-          value={formatCurrencyFromGhs(financialSummary.totalCollections, display)}
-          label="Total Collections"
-          sublabel="Susu collections"
+          value={formatCurrencyFromGhs(financialSummary.netCollections, display)}
+          label="Net Collections"
+          sublabel="Susu collections (less emergency withdrawals)"
           variant="success"
         />
         <StatCard
