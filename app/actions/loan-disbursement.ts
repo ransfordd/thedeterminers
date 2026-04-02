@@ -14,6 +14,8 @@ import {
   toUtcDateOnly,
   totalRepaymentFromInstallments,
 } from "@/lib/loan-schedule";
+import { formatAmountForDisplay } from "@/lib/currency";
+import { notifyClientByClientIdPremiumSms } from "@/lib/sms";
 
 export type DisburseState = { success?: boolean; error?: string; loanNumber?: string };
 
@@ -131,6 +133,12 @@ export async function disburseApprovedLoan(_prev: DisburseState, formData: FormD
         paymentStatus: "pending" as const,
       })),
     });
+  });
+
+  await notifyClientByClientIdPremiumSms(prisma, application.clientId, {
+    eventLine: `Your loan of GHS ${formatAmountForDisplay(principal)} has been disbursed. Total to repay: GHS ${formatAmountForDisplay(Number(totalRepayment))}.`,
+    reference: loanNumber,
+    date: disbursementDate,
   });
 
   revalidatePath("/admin/applications");

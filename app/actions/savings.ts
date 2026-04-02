@@ -9,6 +9,7 @@ import { debitClientSavings, creditClientSavings } from "@/lib/savings";
 import { applyLoanInstallmentPayment } from "@/lib/loan-payment-apply";
 import { formatAmountForDisplay } from "@/lib/currency";
 import { SUSU_CYCLE_DAYS_REQUIRED } from "@/lib/susu-cycle";
+import { notifyClientByClientIdPremiumSms } from "@/lib/sms";
 
 export type SavingsActionState = { success?: boolean; error?: string };
 
@@ -197,6 +198,19 @@ export async function payCycleFromSavings(
     }
   }
 
+  const acctAfter = await prisma.savingsAccount.findUnique({
+    where: { clientId },
+    select: { balance: true },
+  });
+  await notifyClientByClientIdPremiumSms(prisma, clientId, {
+    eventLine: `A payment of GHS ${formatAmountForDisplay(amountToDebit)} from your savings toward your Susu cycle has been recorded.`,
+    reference: receipt,
+    date: paymentDate,
+    balanceLine: acctAfter
+      ? `Savings account balance: GHS ${formatAmountForDisplay(Number(acctAfter.balance))}.`
+      : null,
+  });
+
   revalidatePath("/client/savings");
   revalidatePath("/client/savings/pay-cycle");
   revalidatePath("/client");
@@ -226,6 +240,18 @@ export async function payLoanFromSavings(
     processedByUserId: null,
   });
   if (!applyRes.success) return { error: applyRes.error };
+
+  const loan = await prisma.loan.findFirst({
+    where: { id: loanId, clientId, loanStatus: "active" },
+    select: { currentBalance: true },
+  });
+  await notifyClientByClientIdPremiumSms(prisma, clientId, {
+    eventLine: `A loan repayment of GHS ${formatAmountForDisplay(amount)} has been recorded from your savings.`,
+    date: new Date(),
+    balanceLine: loan
+      ? `Remaining loan balance: GHS ${formatAmountForDisplay(Number(loan.currentBalance))}.`
+      : null,
+  });
 
   revalidatePath("/client/savings");
   revalidatePath("/client/savings/pay-loan");
@@ -266,6 +292,18 @@ export async function transferPayoutToSavings(cycleId: number): Promise<SavingsA
       payoutTransferred: true,
       payoutTransferredAt: new Date(),
     },
+  });
+
+  const acctAfterPayout = await prisma.savingsAccount.findUnique({
+    where: { clientId },
+    select: { balance: true },
+  });
+  await notifyClientByClientIdPremiumSms(prisma, clientId, {
+    eventLine: `GHS ${formatAmountForDisplay(amount)} from your completed Susu cycle payout has been credited to your savings.`,
+    date: new Date(),
+    balanceLine: acctAfterPayout
+      ? `Savings account balance: GHS ${formatAmountForDisplay(Number(acctAfterPayout.balance))}.`
+      : null,
   });
 
   revalidatePath("/client/savings");
@@ -324,6 +362,11 @@ export async function requestWithdrawal(
     })),
   });
 
+  await notifyClientByClientIdPremiumSms(prisma, clientId, {
+    eventLine: `Your savings withdrawal request of GHS ${formatAmountForDisplay(amount)} has been submitted and is pending review.`,
+    date: new Date(),
+  });
+
   revalidatePath("/client/savings");
   revalidatePath("/client/savings/request-withdrawal");
   return { success: true };
@@ -362,6 +405,18 @@ export async function processPayoutTransfer(cycleId: number): Promise<SavingsAct
       payoutTransferred: true,
       payoutTransferredAt: new Date(),
     },
+  });
+
+  const acctStaffPayout = await prisma.savingsAccount.findUnique({
+    where: { clientId: cycle.clientId },
+    select: { balance: true },
+  });
+  await notifyClientByClientIdPremiumSms(prisma, cycle.clientId, {
+    eventLine: `GHS ${formatAmountForDisplay(amount)} from your completed Susu cycle payout has been credited to your savings by the office.`,
+    date: new Date(),
+    balanceLine: acctStaffPayout
+      ? `Savings account balance: GHS ${formatAmountForDisplay(Number(acctStaffPayout.balance))}.`
+      : null,
   });
 
   revalidatePath("/admin/pending-transfers");

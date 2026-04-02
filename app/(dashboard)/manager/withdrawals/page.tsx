@@ -19,7 +19,7 @@ export default async function ManagerWithdrawalsPage() {
   const [clientsList, recentWithdrawals] = await Promise.all([
     getClientsList(),
     prisma.manualTransaction.findMany({
-      where: { transactionType: "withdrawal" },
+      where: { transactionType: { in: ["savings_withdrawal", "emergency_withdrawal"] } },
       orderBy: { createdAt: "desc" },
       take: 10,
       include: {

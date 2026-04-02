@@ -1,5 +1,60 @@
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
+import type { Prisma } from "@prisma/client";
+
+type SavingsDebitResult = { success: true } | { success: false; error: string };
+
+async function debitClientSavingsCore(
+  db: Prisma.TransactionClient,
+  clientId: number,
+  amount: number,
+  source: "withdrawal_request",
+  purpose: "cycle_payment" | "loan_payment" | "withdrawal",
+  description: string,
+  processedById: number | null
+): Promise<SavingsDebitResult> {
+  const account = await db.savingsAccount.findUnique({
+    where: { clientId },
+    select: { id: true, balance: true },
+  });
+  if (!account) return { success: false, error: "Savings account not found" };
+  const currentBalance = Number(account.balance);
+  if (amount <= 0) return { success: false, error: "Amount must be greater than 0" };
+  if (currentBalance < amount) return { success: false, error: "Insufficient savings balance" };
+  const newBalance = currentBalance - amount;
+  await db.savingsAccount.update({
+    where: { id: account.id },
+    data: { balance: new Decimal(newBalance) },
+  });
+  await db.savingsTransaction.create({
+    data: {
+      savingsAccountId: account.id,
+      transactionType: "withdrawal",
+      amount: new Decimal(amount),
+      balanceAfter: new Decimal(newBalance),
+      source,
+      purpose,
+      description,
+      processedById,
+    },
+  });
+  return { success: true };
+}
+
+/**
+ * Debit inside an existing interactive transaction (e.g. withdrawal + manual row).
+ */
+export async function debitClientSavingsInTransaction(
+  tx: Prisma.TransactionClient,
+  clientId: number,
+  amount: number,
+  source: "withdrawal_request",
+  purpose: "cycle_payment" | "loan_payment" | "withdrawal",
+  description: string,
+  processedById: number | null
+): Promise<SavingsDebitResult> {
+  return debitClientSavingsCore(tx, clientId, amount, source, purpose, description, processedById);
+}
 
 /**
  * Debit a client's savings account. Fails if insufficient balance.
@@ -12,35 +67,10 @@ export async function debitClientSavings(
   purpose: "cycle_payment" | "loan_payment" | "withdrawal",
   description: string,
   processedById: number | null
-): Promise<{ success: true } | { success: false; error: string }> {
-  const account = await prisma.savingsAccount.findUnique({
-    where: { clientId },
-    select: { id: true, balance: true },
-  });
-  if (!account) return { success: false, error: "Savings account not found" };
-  const currentBalance = Number(account.balance);
-  if (amount <= 0) return { success: false, error: "Amount must be greater than 0" };
-  if (currentBalance < amount) return { success: false, error: "Insufficient savings balance" };
-  const newBalance = currentBalance - amount;
-  await prisma.$transaction([
-    prisma.savingsAccount.update({
-      where: { id: account.id },
-      data: { balance: new Decimal(newBalance) },
-    }),
-    prisma.savingsTransaction.create({
-      data: {
-        savingsAccountId: account.id,
-        transactionType: "withdrawal",
-        amount: new Decimal(amount),
-        balanceAfter: new Decimal(newBalance),
-        source,
-        purpose,
-        description,
-        processedById,
-      },
-    }),
-  ]);
-  return { success: true };
+): Promise<SavingsDebitResult> {
+  return prisma.$transaction((tx) =>
+    debitClientSavingsCore(tx, clientId, amount, source, purpose, description, processedById)
+  );
 }
 
 /**

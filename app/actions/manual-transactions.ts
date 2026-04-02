@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
 import { creditClientSavings } from "@/lib/savings";
 import { ensureSusuCycleForMonth, SUSU_CYCLE_DAYS_REQUIRED } from "@/lib/susu-cycle";
+import { formatAmountForDisplay } from "@/lib/currency";
+import { notifyClientByClientIdPremiumSms } from "@/lib/sms";
 
 export type ManualTransactionState = { success?: boolean; error?: string };
 
@@ -106,6 +108,28 @@ export async function createManualTransaction(
         message: `${line} of GHS ${amount.toFixed(2)} was recorded. ${description}. Reference: ${reference}.`,
       },
     }).catch(() => { /* ignore */ });
+
+    const amt = formatAmountForDisplay(amount);
+    if (entryType === "susu_collection") {
+      await notifyClientByClientIdPremiumSms(prisma, clientId, {
+        eventLine: `A Susu collection of GHS ${amt} has been recorded.`,
+        reference,
+        date: new Date(),
+      });
+    } else {
+      const acct = await prisma.savingsAccount.findUnique({
+        where: { clientId },
+        select: { balance: true },
+      });
+      await notifyClientByClientIdPremiumSms(prisma, clientId, {
+        eventLine: `A savings deposit of GHS ${amt} has been recorded.`,
+        reference,
+        date: new Date(),
+        balanceLine: acct
+          ? `Savings account balance: GHS ${formatAmountForDisplay(Number(acct.balance))}.`
+          : null,
+      });
+    }
   }
 
   revalidatePath("/admin/manual-transactions");

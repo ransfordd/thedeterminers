@@ -271,3 +271,41 @@ export async function sendSmsToUserIds(
     console.error("[SMS] sendSmsToUserIds error:", e);
   }
 }
+
+/** Payload for client SMS when you already know `clientId` (loads name + userId). */
+export type ClientPremiumSmsByClientIdInput = {
+  eventLine: string;
+  reference?: string | null;
+  date?: Date;
+  balanceLine?: string | null;
+};
+
+/**
+ * Look up the client’s linked user and send a premium-format SMS.
+ * No-op if client missing; `sendSmsToUserIds` still enforces sms_enabled, Arkesel env, and client role.
+ */
+export async function notifyClientByClientIdPremiumSms(
+  prisma: PrismaClient,
+  clientId: number,
+  input: ClientPremiumSmsByClientIdInput
+): Promise<void> {
+  const row = await prisma.client.findUnique({
+    where: { id: clientId },
+    include: { user: { select: { firstName: true, lastName: true } } },
+  });
+  if (!row) return;
+  const clientName = row.user
+    ? `${row.user.firstName ?? ""} ${row.user.lastName ?? ""}`.trim()
+    : "";
+  await sendSmsToUserIds(
+    prisma,
+    [row.userId],
+    await buildPremiumSms({
+      clientName: clientName || null,
+      eventLine: input.eventLine,
+      reference: input.reference,
+      date: input.date,
+      balanceLine: input.balanceLine,
+    })
+  );
+}

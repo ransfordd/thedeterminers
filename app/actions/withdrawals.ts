@@ -4,10 +4,27 @@ import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { buildPremiumSms, sendSmsToUserIds } from "@/lib/sms";
+import { buildPremiumSms, notifyClientByClientIdPremiumSms, sendSmsToUserIds } from "@/lib/sms";
 import { Decimal } from "@prisma/client/runtime/library";
+import { debitClientSavingsInTransaction } from "@/lib/savings";
+import { formatAmountForDisplay } from "@/lib/currency";
 
 export type WithdrawalState = { success?: boolean; error?: string; reference?: string };
+
+export type WithdrawalPreview = {
+  savingsBalance: number;
+  emergency: null | {
+    hasActiveCycle: boolean;
+    cycleId?: number;
+    daysCollected: number;
+    maxEmergencyAmount: number;
+    alreadyUsedThisCycle: boolean;
+    meetsDayRequirement: boolean;
+    hint: string;
+  };
+};
+
+const EMERGENCY_MIN_DAYS = 2;
 
 const WITHDRAWAL_TYPES = ["savings_withdrawal", "emergency_withdrawal"] as const;
 type WithdrawalType = (typeof WITHDRAWAL_TYPES)[number];
@@ -15,6 +32,97 @@ type WithdrawalType = (typeof WITHDRAWAL_TYPES)[number];
 function toWithdrawalType(s: string): WithdrawalType | null {
   if (WITHDRAWAL_TYPES.includes(s as WithdrawalType)) return s as WithdrawalType;
   return null;
+}
+
+async function loadEmergencyWithdrawalEligibility(clientId: number): Promise<WithdrawalPreview["emergency"]> {
+  const cycle = await prisma.susuCycle.findFirst({
+    where: { clientId, status: "active" },
+    orderBy: { id: "desc" },
+  });
+  if (!cycle) {
+    return {
+      hasActiveCycle: false,
+      daysCollected: 0,
+      maxEmergencyAmount: 0,
+      alreadyUsedThisCycle: false,
+      meetsDayRequirement: false,
+      hint: "No active Susu cycle. Emergency withdrawals apply only when a cycle is active.",
+    };
+  }
+
+  const [daysCollected, totalCollectedAgg, ewtCount, manualEmergencyCount] = await Promise.all([
+    prisma.dailyCollection.count({
+      where: { susuCycleId: cycle.id, collectionStatus: "collected" },
+    }),
+    prisma.dailyCollection.aggregate({
+      where: { susuCycleId: cycle.id, collectionStatus: "collected" },
+      _sum: { collectedAmount: true },
+    }),
+    prisma.emergencyWithdrawalTransaction.count({
+      where: { clientId, request: { susuCycleId: cycle.id } },
+    }),
+    prisma.manualTransaction.count({
+      where: {
+        clientId,
+        transactionType: "emergency_withdrawal",
+        createdAt: { gte: cycle.startDate },
+      },
+    }),
+  ]);
+
+  const alreadyUsedThisCycle = ewtCount > 0 || manualEmergencyCount > 0;
+  const dailyAmount = Number(cycle.dailyAmount);
+  const totalCollected = Number(totalCollectedAgg._sum.collectedAmount ?? 0);
+  const { computeCommission } = await import("@/lib/commission");
+  const { amountToClient: availableAmount } = computeCommission({
+    isFlexible: cycle.isFlexible ?? false,
+    dailyAmount,
+    totalCollected,
+    daysCollected,
+  });
+  const maxEmergencyAmount = Math.max(0, availableAmount);
+  const meetsDayRequirement = daysCollected >= EMERGENCY_MIN_DAYS;
+
+  let hint = "";
+  if (alreadyUsedThisCycle) {
+    hint = "An emergency withdrawal has already been recorded for this cycle.";
+  } else if (!meetsDayRequirement) {
+    hint = `At least ${EMERGENCY_MIN_DAYS} collection days are required (currently ${daysCollected}).`;
+  } else if (maxEmergencyAmount <= 0) {
+    hint = "No emergency withdrawal amount is available for this cycle yet.";
+  } else {
+    hint = `Maximum emergency withdrawal for this cycle: GHS ${formatAmountForDisplay(maxEmergencyAmount)}.`;
+  }
+
+  return {
+    hasActiveCycle: true,
+    cycleId: cycle.id,
+    daysCollected,
+    maxEmergencyAmount,
+    alreadyUsedThisCycle,
+    meetsDayRequirement,
+    hint,
+  };
+}
+
+/** Staff UI: savings balance + emergency eligibility when a client is selected. */
+export async function getWithdrawalPreview(clientId: number): Promise<WithdrawalPreview> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { savingsBalance: 0, emergency: null };
+  const role = (session.user as { role?: string }).role;
+  if (role !== "business_admin" && role !== "manager") return { savingsBalance: 0, emergency: null };
+
+  if (!Number.isFinite(clientId) || clientId < 1) {
+    return { savingsBalance: 0, emergency: null };
+  }
+
+  const account = await prisma.savingsAccount.findUnique({
+    where: { clientId },
+    select: { balance: true },
+  });
+  const savingsBalance = account ? Number(account.balance) : 0;
+  const emergency = await loadEmergencyWithdrawalEligibility(clientId);
+  return { savingsBalance, emergency };
 }
 
 export async function processWithdrawal(
@@ -50,40 +158,149 @@ export async function processWithdrawal(
   });
   if (!client) return { error: "Client not found" };
 
-  await prisma.$transaction([
-    prisma.manualTransaction.create({
-      data: {
-        clientId,
-        transactionType: withdrawalType,
-        amount: new Decimal(amount),
-        description,
-        reference,
-        processedById: userId,
-      },
-    }),
-    prisma.notification.create({
-      data: {
-        userId: client.userId,
-        notificationType: "payment_recorded",
-        title: "Withdrawal processed",
-        message: `Your withdrawal of GHS ${amount.toFixed(2)} has been processed. Reference: ${reference}. ${description}`,
-      },
-    }),
-  ]);
+  if (withdrawalType === "savings_withdrawal") {
+    const account = await prisma.savingsAccount.findUnique({
+      where: { clientId },
+      select: { balance: true },
+    });
+    const balance = account ? Number(account.balance) : 0;
+    if (amount > balance + 0.005) {
+      return {
+        error: `Insufficient savings balance. Available: GHS ${formatAmountForDisplay(balance)}; requested: GHS ${formatAmountForDisplay(amount)}.`,
+      };
+    }
+    try {
+      await prisma.$transaction(async (tx) => {
+        const debit = await debitClientSavingsInTransaction(
+          tx,
+          clientId,
+          amount,
+          "withdrawal_request",
+          "withdrawal",
+          `Savings withdrawal. Ref: ${reference}. ${description}`,
+          userId
+        );
+        if (!debit.success) {
+          const err = new Error(debit.error);
+          err.name = "SavingsDebitFail";
+          throw err;
+        }
+        await tx.manualTransaction.create({
+          data: {
+            clientId,
+            transactionType: withdrawalType,
+            amount: new Decimal(amount),
+            description,
+            reference,
+            processedById: userId,
+          },
+        });
+        await tx.notification.create({
+          data: {
+            userId: client.userId,
+            notificationType: "payment_recorded",
+            title: "Withdrawal processed",
+            message: `Your withdrawal of GHS ${amount.toFixed(2)} has been processed. Reference: ${reference}. ${description}`,
+          },
+        });
+        if (client.agent?.user?.id) {
+          await tx.notification.create({
+            data: {
+              userId: client.agent.user.id,
+              notificationType: "payment_recorded",
+              title: "Client withdrawal processed",
+              message: `Withdrawal of GHS ${amount.toFixed(2)} processed for ${client.user.firstName} ${client.user.lastName}. Reference: ${reference}`,
+            },
+          });
+        }
+      });
+    } catch (e) {
+      if (e instanceof Error && e.name === "SavingsDebitFail") {
+        return { error: e.message };
+      }
+      throw e;
+    }
+  } else {
+    const em = await loadEmergencyWithdrawalEligibility(clientId);
+    if (!em?.hasActiveCycle) {
+      return { error: em?.hint ?? "This client has no active Susu cycle for an emergency withdrawal." };
+    }
+    if (em.alreadyUsedThisCycle) {
+      return { error: "An emergency withdrawal has already been recorded for this client's current Susu cycle." };
+    }
+    if (!em.meetsDayRequirement) {
+      return {
+        error: `At least ${EMERGENCY_MIN_DAYS} collection days are required for an emergency withdrawal (currently ${em.daysCollected}).`,
+      };
+    }
+    if (em.maxEmergencyAmount <= 0) {
+      return { error: "No emergency withdrawal amount is available for this cycle yet." };
+    }
+    if (amount > em.maxEmergencyAmount + 0.005) {
+      return {
+        error: `Amount cannot exceed the available emergency withdrawal for this cycle: GHS ${formatAmountForDisplay(em.maxEmergencyAmount)}.`,
+      };
+    }
 
-  if (client.agent?.user?.id) {
-    await prisma.notification.create({
-      data: {
-        userId: client.agent.user.id,
-        notificationType: "payment_recorded",
-        title: "Client withdrawal processed",
-        message: `Withdrawal of GHS ${amount.toFixed(2)} processed for ${client.user.firstName} ${client.user.lastName}. Reference: ${reference}`,
-      },
+    await prisma.$transaction([
+      prisma.manualTransaction.create({
+        data: {
+          clientId,
+          transactionType: withdrawalType,
+          amount: new Decimal(amount),
+          description,
+          reference,
+          processedById: userId,
+        },
+      }),
+      prisma.notification.create({
+        data: {
+          userId: client.userId,
+          notificationType: "payment_recorded",
+          title: "Withdrawal processed",
+          message: `Your withdrawal of GHS ${amount.toFixed(2)} has been processed. Reference: ${reference}. ${description}`,
+        },
+      }),
+    ]);
+
+    if (client.agent?.user?.id) {
+      await prisma.notification.create({
+        data: {
+          userId: client.agent.user.id,
+          notificationType: "payment_recorded",
+          title: "Client withdrawal processed",
+          message: `Withdrawal of GHS ${amount.toFixed(2)} processed for ${client.user.firstName} ${client.user.lastName}. Reference: ${reference}`,
+        },
+      });
+    }
+  }
+
+  const amountStr = amount.toFixed(2);
+
+  if (withdrawalType === "savings_withdrawal") {
+    const acctAfter = await prisma.savingsAccount.findUnique({
+      where: { clientId },
+      select: { balance: true },
+    });
+    const remaining = acctAfter ? Number(acctAfter.balance) : 0;
+    await notifyClientByClientIdPremiumSms(prisma, clientId, {
+      eventLine: `A savings withdrawal of GHS ${amountStr} has been processed by the office.`,
+      reference,
+      date: new Date(),
+      balanceLine: `Remaining savings balance: GHS ${formatAmountForDisplay(remaining)}.`,
+    });
+  } else {
+    await notifyClientByClientIdPremiumSms(prisma, clientId, {
+      eventLine: `An emergency withdrawal of GHS ${amountStr} has been processed by the office.`,
+      reference,
+      date: new Date(),
     });
   }
 
   revalidatePath("/admin/withdrawals");
   revalidatePath("/admin");
+  revalidatePath("/manager/withdrawals");
+  revalidatePath("/manager");
   return { success: true, reference };
 }
 

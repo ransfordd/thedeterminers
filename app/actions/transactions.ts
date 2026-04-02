@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
+import { formatAmountForDisplay } from "@/lib/currency";
+import { notifyClientByClientIdPremiumSms } from "@/lib/sms";
 
 export type UpdateCollectionState = { success?: boolean; error?: string };
 
@@ -45,7 +47,10 @@ export async function updateCollection(
   try {
     const existing = await prisma.dailyCollection.findUnique({
       where: { id },
-      select: { collectionStatus: true },
+      select: {
+        collectionStatus: true,
+        susuCycle: { select: { clientId: true } },
+      },
     });
     if (!existing || existing.collectionStatus !== "collected")
       return { error: "Collection not found or not editable" };
@@ -58,6 +63,11 @@ export async function updateCollection(
         collectedById,
         notes: notes ?? undefined,
       },
+    });
+
+    await notifyClientByClientIdPremiumSms(prisma, existing.susuCycle.clientId, {
+      eventLine: `Your Susu collection record was updated by the office. Recorded amount is now GHS ${formatAmountForDisplay(amount)}.`,
+      date: collectionTime ?? new Date(),
     });
   } catch {
     return { error: "Failed to update collection" };
@@ -128,7 +138,10 @@ export async function updateLoanPayment(
   try {
     const existing = await prisma.loanPayment.findUnique({
       where: { id },
-      select: { paymentStatus: true },
+      select: {
+        paymentStatus: true,
+        loan: { select: { clientId: true } },
+      },
     });
     if (!existing || existing.paymentStatus !== "paid") return { error: "Payment not found or not editable" };
 
@@ -140,6 +153,11 @@ export async function updateLoanPayment(
         collectedById,
         notes: notes ?? undefined,
       },
+    });
+
+    await notifyClientByClientIdPremiumSms(prisma, existing.loan.clientId, {
+      eventLine: `Your loan repayment record was updated by the office. Amount paid is now GHS ${formatAmountForDisplay(amount)}.`,
+      date: paymentDate ?? new Date(),
     });
   } catch {
     return { error: "Failed to update payment" };
