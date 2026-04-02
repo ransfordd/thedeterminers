@@ -10,6 +10,7 @@ import { ensureSusuCycleForMonth, SUSU_CYCLE_DAYS_REQUIRED } from "@/lib/susu-cy
 import { formatAmountForDisplay } from "@/lib/currency";
 import { creditClientSavings } from "@/lib/savings";
 import { buildPremiumSms, buildRichCycleSms, sendSmsToUserIds } from "@/lib/sms";
+import { assertClientActiveForTransactions } from "@/lib/client-guards";
 
 export type AdminPaymentState = { success?: boolean; error?: string };
 
@@ -42,6 +43,9 @@ export async function recordAdminPayment(
 
   if (!clientId) return { error: "Select a client" };
   if (amount <= 0) return { error: "Amount must be greater than 0" };
+
+  const inactiveErr = await assertClientActiveForTransactions(clientId);
+  if (inactiveErr) return { error: inactiveErr };
 
   try {
     if (paymentType === "loan_payment") {

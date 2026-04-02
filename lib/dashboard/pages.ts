@@ -49,10 +49,17 @@ export async function getLoanProducts() {
 }
 
 /** Admin/Manager: all clients with agent info; optional agentId to filter by agent */
-export async function getClientsList(agentId?: number) {
+export async function getClientsList(
+  agentId?: number,
+  options?: { activeOnly?: boolean }
+) {
+  const where: Prisma.ClientWhereInput = {};
+  if (agentId != null) where.agentId = agentId;
+  if (options?.activeOnly) where.status = "active";
+
   const list = await prisma.client.findMany({
     orderBy: { clientCode: "asc" },
-    where: agentId != null ? { agentId } : undefined,
+    where: Object.keys(where).length ? where : undefined,
     include: {
       user: true,
       agent: { include: { user: true } },
@@ -88,6 +95,7 @@ export async function getClientsListPaged(options: {
   page?: number;
   pageSize?: number;
   search?: string;
+  activeOnly?: boolean;
 }): Promise<ClientsListPaged> {
   const page = clampPage(options.page);
   const pageSize = clampPageSize(options.pageSize);
@@ -95,6 +103,7 @@ export async function getClientsListPaged(options: {
 
   const where: Prisma.ClientWhereInput = {};
   if (options.agentId != null) where.agentId = options.agentId;
+  if (options.activeOnly) where.status = "active";
   if (search) {
     where.OR = [
       { clientCode: { contains: search, mode: "insensitive" } },

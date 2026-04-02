@@ -10,6 +10,7 @@ import { formatAmountForDisplay } from "@/lib/currency";
 import { creditClientSavings } from "@/lib/savings";
 import { buildPremiumSms, buildRichCycleSms, sendSmsToUserIds } from "@/lib/sms";
 import { recordLoanInstallmentCashPayment } from "@/lib/loan-payment-apply";
+import { assertClientActiveForTransactions } from "@/lib/client-guards";
 
 export type CollectState = { success?: boolean; error?: string };
 
@@ -41,6 +42,9 @@ export async function recordCollection(
 
   const clientId = parseInt((formData.get("clientId") as string) ?? "0", 10);
   if (!clientId) return { error: "Select a client" };
+
+  const collectInactiveErr = await assertClientActiveForTransactions(clientId);
+  if (collectInactiveErr) return { error: collectInactiveErr };
 
   const accountType = (formData.get("accountType") as string) || "susu";
   const receiptNumber = (formData.get("receiptNumber") as string)?.trim() || null;

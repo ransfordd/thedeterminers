@@ -20,7 +20,7 @@ export default async function AdminPaymentsPage() {
   weekAgo.setDate(weekAgo.getDate() - 7);
 
   const [clientsList, activeLoans, recentLoanPayments, recentCollections] = await Promise.all([
-    getClientsList(),
+    getClientsList(undefined, { activeOnly: true }),
     prisma.loan.findMany({
       where: { loanStatus: "active" },
       orderBy: { id: "desc" },

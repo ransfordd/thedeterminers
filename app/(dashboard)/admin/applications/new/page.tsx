@@ -16,7 +16,10 @@ export default async function AdminApplicationsNewPage({
   if (role !== "business_admin" && role !== "manager") redirect("/dashboard");
 
   const params = await searchParams;
-  const [allClients, products] = await Promise.all([getClientsList(), getLoanProducts()]);
+  const [allClients, products] = await Promise.all([
+    getClientsList(undefined, { activeOnly: true }),
+    getLoanProducts(),
+  ]);
 
   const clients = allClients.map((c) => ({
     id: c.id,

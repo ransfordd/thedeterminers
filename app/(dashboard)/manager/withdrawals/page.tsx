@@ -17,7 +17,7 @@ export default async function ManagerWithdrawalsPage() {
   const display = await getCurrencyDisplay();
 
   const [clientsList, recentWithdrawals] = await Promise.all([
-    getClientsList(),
+    getClientsList(undefined, { activeOnly: true }),
     prisma.manualTransaction.findMany({
       where: { transactionType: { in: ["savings_withdrawal", "emergency_withdrawal"] } },
       orderBy: { createdAt: "desc" },

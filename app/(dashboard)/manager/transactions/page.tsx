@@ -64,7 +64,7 @@ export default async function ManagerTransactionsPage({
       clientId,
       search: q || undefined,
     }),
-    getClientsList(),
+    getClientsList(undefined, { activeOnly: true }),
     getAgentsFilterOptions(),
   ]);
 

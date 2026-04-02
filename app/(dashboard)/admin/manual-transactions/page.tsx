@@ -29,7 +29,7 @@ export default async function AdminManualTransactionsPage({
     : undefined;
 
   const [clientsList, susuList, savingsList] = await Promise.all([
-    getClientsList(),
+    getClientsList(undefined, { activeOnly: true }),
     typeFilter == null || typeFilter === "susu_collection"
       ? prisma.dailyCollection.findMany({
           where: {

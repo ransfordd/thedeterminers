@@ -8,6 +8,7 @@ import { buildPremiumSms, notifyClientByClientIdPremiumSms, sendSmsToUserIds } f
 import { Decimal } from "@prisma/client/runtime/library";
 import { debitClientSavingsInTransaction } from "@/lib/savings";
 import { formatAmountForDisplay } from "@/lib/currency";
+import { INACTIVE_CLIENT_MESSAGE, assertClientActiveForTransactions } from "@/lib/client-guards";
 
 export type WithdrawalState = { success?: boolean; error?: string; reference?: string };
 
@@ -116,6 +117,21 @@ export async function getWithdrawalPreview(clientId: number): Promise<Withdrawal
     return { savingsBalance: 0, emergency: null };
   }
 
+  const inactiveErr = await assertClientActiveForTransactions(clientId);
+  if (inactiveErr) {
+    return {
+      savingsBalance: 0,
+      emergency: {
+        hasActiveCycle: false,
+        daysCollected: 0,
+        maxEmergencyAmount: 0,
+        alreadyUsedThisCycle: false,
+        meetsDayRequirement: false,
+        hint: inactiveErr === "Client not found" ? "Client not found." : INACTIVE_CLIENT_MESSAGE,
+      },
+    };
+  }
+
   const account = await prisma.savingsAccount.findUnique({
     where: { clientId },
     select: { balance: true },
@@ -157,6 +173,7 @@ export async function processWithdrawal(
     include: { user: true, agent: { include: { user: true } } },
   });
   if (!client) return { error: "Client not found" };
+  if (client.status !== "active") return { error: INACTIVE_CLIENT_MESSAGE };
 
   if (withdrawalType === "savings_withdrawal") {
     const account = await prisma.savingsAccount.findUnique({
@@ -276,6 +293,24 @@ export async function processWithdrawal(
   }
 
   const amountStr = amount.toFixed(2);
+  const clientName =
+    `${client.user.firstName ?? ""} ${client.user.lastName ?? ""}`.trim() || "Client";
+
+  if (userId > 0) {
+    await prisma.notification
+      .create({
+        data: {
+          userId,
+          notificationType: "payment_recorded",
+          title:
+            withdrawalType === "savings_withdrawal"
+              ? "Savings withdrawal processed"
+              : "Emergency withdrawal processed",
+          message: `${withdrawalType === "savings_withdrawal" ? "Savings" : "Emergency"} withdrawal of GHS ${amountStr} recorded for ${clientName}. Reference: ${reference}.`,
+        },
+      })
+      .catch(() => { /* ignore */ });
+  }
 
   if (withdrawalType === "savings_withdrawal") {
     const acctAfter = await prisma.savingsAccount.findUnique({

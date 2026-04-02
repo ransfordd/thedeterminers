@@ -9,6 +9,7 @@ import { creditClientSavings } from "@/lib/savings";
 import { ensureSusuCycleForMonth, SUSU_CYCLE_DAYS_REQUIRED } from "@/lib/susu-cycle";
 import { formatAmountForDisplay } from "@/lib/currency";
 import { notifyClientByClientIdPremiumSms } from "@/lib/sms";
+import { assertClientActiveForTransactions } from "@/lib/client-guards";
 
 export type ManualTransactionState = { success?: boolean; error?: string };
 
@@ -38,6 +39,9 @@ export async function createManualTransaction(
 
   if (!clientId) return { error: "Select a client" };
   if (amount <= 0) return { error: "Amount must be greater than 0" };
+
+  const inactiveErr = await assertClientActiveForTransactions(clientId);
+  if (inactiveErr) return { error: inactiveErr };
 
   if (!reference) reference = `MT-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -93,21 +97,53 @@ export async function createManualTransaction(
     );
   }
 
-  const clientUser = await prisma.client.findUnique({
+  const clientForNotif = await prisma.client.findUnique({
     where: { id: clientId },
-    select: { userId: true },
+    include: { user: true, agent: { include: { user: true } } },
   });
-  if (clientUser?.userId) {
+  if (clientForNotif) {
     const title = entryType === "susu_collection" ? "Susu collection recorded" : "Savings deposit recorded";
     const line = entryType === "susu_collection" ? "Susu collection" : "Savings deposit";
-    await prisma.notification.create({
-      data: {
-        userId: clientUser.userId,
-        notificationType: "payment_recorded",
-        title,
-        message: `${line} of GHS ${amount.toFixed(2)} was recorded. ${description}. Reference: ${reference}.`,
-      },
-    }).catch(() => { /* ignore */ });
+    const msg = `${line} of GHS ${amount.toFixed(2)} was recorded. ${description}. Reference: ${reference}.`;
+    const clientName =
+      `${clientForNotif.user.firstName ?? ""} ${clientForNotif.user.lastName ?? ""}`.trim() || "Client";
+
+    await prisma.notification
+      .create({
+        data: {
+          userId: clientForNotif.userId,
+          notificationType: "payment_recorded",
+          title,
+          message: msg,
+        },
+      })
+      .catch(() => { /* ignore */ });
+
+    if (clientForNotif.agent?.userId) {
+      await prisma.notification
+        .create({
+          data: {
+            userId: clientForNotif.agent.userId,
+            notificationType: "payment_recorded",
+            title,
+            message: `${line} of GHS ${amount.toFixed(2)} recorded for client ${clientName}. Reference: ${reference}.`,
+          },
+        })
+        .catch(() => { /* ignore */ });
+    }
+
+    if (userId > 0) {
+      await prisma.notification
+        .create({
+          data: {
+            userId,
+            notificationType: "payment_recorded",
+            title,
+            message: `${line} of GHS ${amount.toFixed(2)} recorded for ${clientName}. Reference: ${reference}.`,
+          },
+        })
+        .catch(() => { /* ignore */ });
+    }
 
     const amt = formatAmountForDisplay(amount);
     if (entryType === "susu_collection") {

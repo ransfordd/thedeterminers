@@ -29,11 +29,13 @@ export default async function AgentApplicationsNewPage({
     );
   }
 
-  const clients = data.assignedClients.map((c) => ({
-    id: c.id,
-    clientCode: c.clientCode,
-    name: `${c.firstName} ${c.lastName}`,
-  }));
+  const clients = data.assignedClients
+    .filter((c) => c.status === "active")
+    .map((c) => ({
+      id: c.id,
+      clientCode: c.clientCode,
+      name: `${c.firstName} ${c.lastName}`,
+    }));
   const productList = products
     .filter((p) => p.status === "active")
     .map((p) => ({
@@ -47,7 +49,10 @@ export default async function AgentApplicationsNewPage({
     }));
 
   const clientIdParam = params.client_id ? parseInt(params.client_id, 10) : undefined;
-  const isValidClient = clientIdParam != null && !Number.isNaN(clientIdParam) && data.assignedClients.some((c) => c.id === clientIdParam);
+  const isValidClient =
+    clientIdParam != null &&
+    !Number.isNaN(clientIdParam) &&
+    data.assignedClients.some((c) => c.id === clientIdParam && c.status === "active");
   const initialClientId = isValidClient ? clientIdParam : undefined;
 
   return (

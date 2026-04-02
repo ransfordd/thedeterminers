@@ -30,7 +30,7 @@ export default async function AdminUserTransactionsPage({
   const toDate = params.to_date ? new Date(params.to_date + "T23:59:59Z") : null;
   const typeFilter = params.type || "all";
 
-  const clientsList = await getClientsList(agentIdParam ?? undefined);
+  const clientsList = await getClientsList(agentIdParam ?? undefined, { activeOnly: true });
   const clients = clientsList.map((c) => ({
     id: c.id,
     clientCode: c.clientCode,
