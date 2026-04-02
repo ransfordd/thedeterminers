@@ -14,7 +14,7 @@ export function CurrencyDisplayWarningBanner({ code, rateFromGhs, canManageSetti
 
   return (
     <div
-      className="border-b border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 px-4 py-2.5 text-sm text-amber-950 dark:text-amber-100"
+      className="print:hidden border-b border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 px-4 py-2.5 text-sm text-amber-950 dark:text-amber-100"
       role="status"
     >
       <p className="font-medium">Display currency ({code}) has no valid rate configured</p>

@@ -5,15 +5,17 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
+import { creditClientSavings } from "@/lib/savings";
+import { ensureSusuCycleForMonth, SUSU_CYCLE_DAYS_REQUIRED } from "@/lib/susu-cycle";
 
 export type ManualTransactionState = { success?: boolean; error?: string };
 
-const TYPES = ["deposit", "withdrawal", "savings_withdrawal", "emergency_withdrawal"] as const;
-type T = (typeof TYPES)[number];
+const ENTRY_TYPES = ["susu_collection", "savings_deposit"] as const;
+type EntryType = (typeof ENTRY_TYPES)[number];
 
-function toType(s: string): T {
-  if (TYPES.includes(s as T)) return s as T;
-  return "withdrawal";
+function toEntryType(s: string): EntryType {
+  if (ENTRY_TYPES.includes(s as EntryType)) return s as EntryType;
+  return "susu_collection";
 }
 
 export async function createManualTransaction(
@@ -27,7 +29,7 @@ export async function createManualTransaction(
 
   const userId = parseInt((session.user as { id?: string }).id ?? "0", 10);
   const clientId = parseInt((formData.get("clientId") as string) ?? "0", 10);
-  const transactionType = toType((formData.get("transactionType") as string) || "withdrawal");
+  const entryType = toEntryType((formData.get("transactionType") as string) || "susu_collection");
   const amount = parseFloat((formData.get("amount") as string) ?? "0");
   const description = (formData.get("description") as string)?.trim() || "Manual transaction";
   let reference = (formData.get("reference") as string)?.trim();
@@ -36,31 +38,72 @@ export async function createManualTransaction(
   if (amount <= 0) return { error: "Amount must be greater than 0" };
 
   if (!reference) reference = `MT-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const existing = await prisma.manualTransaction.findUnique({ where: { reference } });
-  if (existing) return { error: "Reference already used" };
 
-  await prisma.manualTransaction.create({
-    data: {
+  if (entryType === "susu_collection") {
+    const existingReceipt = await prisma.dailyCollection.findFirst({
+      where: { receiptNumber: reference },
+      select: { id: true },
+    });
+    if (existingReceipt) return { error: "Reference already used" };
+
+    const collectionDate = new Date();
+    const ensured = await ensureSusuCycleForMonth(clientId, collectionDate);
+    if (!ensured) return { error: "Client not found or inactive; cannot record Susu collection" };
+
+    const used = await prisma.dailyCollection.findMany({
+      where: { susuCycleId: ensured.id, collectionStatus: "collected" },
+      select: { dayNumber: true },
+    });
+    const usedDays = new Set(used.map((r) => r.dayNumber));
+    if (usedDays.size >= SUSU_CYCLE_DAYS_REQUIRED) {
+      return { error: "This Susu cycle is already complete." };
+    }
+    let dayNumber = 1;
+    for (let d = 1; d <= SUSU_CYCLE_DAYS_REQUIRED; d++) {
+      if (!usedDays.has(d)) {
+        dayNumber = d;
+        break;
+      }
+    }
+
+    await prisma.dailyCollection.create({
+      data: {
+        susuCycleId: ensured.id,
+        collectionDate,
+        dayNumber,
+        expectedAmount: new Decimal(amount),
+        collectedAmount: new Decimal(amount),
+        collectionStatus: "collected",
+        collectionTime: collectionDate,
+        collectedById: null,
+        receiptNumber: reference,
+        notes: description,
+      },
+    });
+  } else {
+    // credit savings; include reference in description for audit readability
+    await creditClientSavings(
       clientId,
-      transactionType,
-      amount: new Decimal(amount),
-      description,
-      reference,
-      processedById: userId,
-    },
-  });
+      amount,
+      "overpayment",
+      `${description}${reference ? ` (Ref: ${reference})` : ""}`,
+      userId
+    );
+  }
 
   const clientUser = await prisma.client.findUnique({
     where: { id: clientId },
     select: { userId: true },
   });
   if (clientUser?.userId) {
+    const title = entryType === "susu_collection" ? "Susu collection recorded" : "Savings deposit recorded";
+    const line = entryType === "susu_collection" ? "Susu collection" : "Savings deposit";
     await prisma.notification.create({
       data: {
         userId: clientUser.userId,
         notificationType: "payment_recorded",
-        title: "Manual transaction recorded",
-        message: `A manual ${transactionType.replace(/_/g, " ")} of GHS ${amount.toFixed(2)} was recorded. ${description}. Reference: ${reference}.`,
+        title,
+        message: `${line} of GHS ${amount.toFixed(2)} was recorded. ${description}. Reference: ${reference}.`,
       },
     }).catch(() => { /* ignore */ });
   }

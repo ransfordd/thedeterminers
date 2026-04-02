@@ -9,13 +9,12 @@ import { Decimal } from "@prisma/client/runtime/library";
 
 export type WithdrawalState = { success?: boolean; error?: string; reference?: string };
 
-const MANUAL_TYPES = ["deposit", "withdrawal", "savings_withdrawal", "emergency_withdrawal"] as const;
-type ManualType = (typeof MANUAL_TYPES)[number];
+const WITHDRAWAL_TYPES = ["savings_withdrawal", "emergency_withdrawal"] as const;
+type WithdrawalType = (typeof WITHDRAWAL_TYPES)[number];
 
-function toManualType(s: string): ManualType {
-  if (s === "susu_payout") return "withdrawal";
-  if (MANUAL_TYPES.includes(s as ManualType)) return s as ManualType;
-  return "withdrawal";
+function toWithdrawalType(s: string): WithdrawalType | null {
+  if (WITHDRAWAL_TYPES.includes(s as WithdrawalType)) return s as WithdrawalType;
+  return null;
 }
 
 export async function processWithdrawal(
@@ -29,12 +28,14 @@ export async function processWithdrawal(
 
   const userId = parseInt((session.user as { id?: string }).id ?? "0", 10);
   const clientId = parseInt((formData.get("clientId") as string) ?? "0", 10);
-  const withdrawalType = toManualType((formData.get("withdrawalType") as string) || "withdrawal");
+  const withdrawalTypeRaw = (formData.get("withdrawalType") as string) || "";
+  const withdrawalType = toWithdrawalType(withdrawalTypeRaw);
   const amount = parseFloat((formData.get("amount") as string) ?? "0");
   const description = (formData.get("description") as string)?.trim();
   let reference = (formData.get("reference") as string)?.trim();
 
   if (!clientId) return { error: "Select a client" };
+  if (!withdrawalType) return { error: "Invalid withdrawal type" };
   if (!description) return { error: "Description is required" };
   if (amount <= 0) return { error: "Amount must be greater than 0" };
 

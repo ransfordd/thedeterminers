@@ -41,7 +41,7 @@ export function ApplicationReviewActions({
             <input id="approvedAmount" name="approvedAmount" type="number" step="0.01" min="0" defaultValue={requestedAmount} className="w-32 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5 text-sm" />
           </div>
           <div>
-            <label htmlFor="approvedTermMonths" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Term (months)</label>
+            <label htmlFor="approvedTermMonths" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Term</label>
             <input id="approvedTermMonths" name="approvedTermMonths" type="number" min="1" defaultValue={requestedTermMonths} className="w-24 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5 text-sm" />
           </div>
           <div className="flex-1 min-w-[200px]">

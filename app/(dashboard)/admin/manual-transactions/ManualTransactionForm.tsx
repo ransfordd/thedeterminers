@@ -51,10 +51,8 @@ export function ManualTransactionForm({ clients }: { clients: ClientOption[] }) 
             required
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           >
-            <option value="deposit">Deposit</option>
-            <option value="withdrawal">Withdrawal</option>
-            <option value="savings_withdrawal">Savings withdrawal</option>
-            <option value="emergency_withdrawal">Emergency withdrawal</option>
+            <option value="susu_collection">Susu collection</option>
+            <option value="savings_deposit">Savings deposit</option>
           </select>
         </div>
       </div>

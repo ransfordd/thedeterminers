@@ -92,7 +92,7 @@ export function DashboardHeader({
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <header className="flex-shrink-0 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-3 flex items-center justify-between w-full border-b border-gray-200 dark:border-gray-800 shadow-sm dark:shadow-none">
+    <header className="print:hidden flex-shrink-0 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-3 flex items-center justify-between w-full border-b border-gray-200 dark:border-gray-800 shadow-sm dark:shadow-none">
       <Link href="/dashboard" className="flex items-center gap-3">
         {appLogoPath ? (
           // eslint-disable-next-line @next/next/no-img-element

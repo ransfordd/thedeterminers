@@ -19,7 +19,7 @@ export default async function AdminWithdrawalsPage() {
   const [clientsList, withdrawals] = await Promise.all([
     getClientsList(),
     prisma.manualTransaction.findMany({
-      where: { transactionType: "withdrawal" },
+      where: { transactionType: { in: ["savings_withdrawal", "emergency_withdrawal"] } },
       orderBy: { createdAt: "desc" },
       take: 200,
       include: {
@@ -39,7 +39,7 @@ export default async function AdminWithdrawalsPage() {
     <>
       <PageHeader
         title="Process Withdrawals"
-        subtitle="Process client withdrawals and Susu payouts"
+        subtitle="Process savings withdrawals and emergency withdrawals"
         icon={<i className="fas fa-hand-holding-usd" />}
         backHref={backHref}
         variant="orange"
@@ -59,7 +59,7 @@ export default async function AdminWithdrawalsPage() {
         </ModernCard>
         <ModernCard
           title="All withdrawals"
-          subtitle="Up to 200 withdrawal transactions"
+          subtitle="Up to 200 withdrawal transactions (savings + emergency)"
           icon={<i className="fas fa-history" />}
         >
           {withdrawals.length === 0 ? (

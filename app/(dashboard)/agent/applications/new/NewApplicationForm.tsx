@@ -92,7 +92,7 @@ export function NewApplicationForm({
         </div>
         <div>
           <label htmlFor="requestedTermMonths" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Term (months) <span className="text-red-500">*</span>
+            Term <span className="text-red-500">*</span>
           </label>
           <input
             id="requestedTermMonths"

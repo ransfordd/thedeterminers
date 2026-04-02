@@ -82,7 +82,7 @@ export function DashboardSidebar({ role, currentPath, className = "" }: Dashboar
 
   return (
     <aside
-      className={`w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700/50 bg-white dark:bg-gray-900 ${className}`}
+      className={`print:hidden w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700/50 bg-white dark:bg-gray-900 ${className}`}
     >
       <nav className="p-3 space-y-0.5">
         {links.map((link) => {

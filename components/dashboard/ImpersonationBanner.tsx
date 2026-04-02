@@ -41,7 +41,7 @@ export function ImpersonationBanner({ role }: { role: string }) {
   if (!show) return null;
 
   return (
-    <div className="bg-amber-500 text-amber-950 px-4 py-2 flex flex-wrap items-center justify-center gap-3 text-sm font-medium">
+    <div className="print:hidden bg-amber-500 text-amber-950 px-4 py-2 flex flex-wrap items-center justify-center gap-3 text-sm font-medium">
       <span>
         <i className="fas fa-user-secret mr-1.5" />
         You are viewing as {role === "client" ? "Client" : "Agent"}.

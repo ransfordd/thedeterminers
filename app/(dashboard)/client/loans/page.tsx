@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { getClientByUserId } from "@/lib/dashboard";
 import { getClientLoanSchedule, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
+import { LoanScheduleExportButtons } from "./LoanScheduleExportButtons";
 
 export default async function ClientLoansPage() {
   const session = await getServerSession(authOptions);
@@ -80,6 +81,9 @@ export default async function ClientLoansPage() {
           icon={<i className="fas fa-wallet" />}
           className="mb-6"
         >
+          <div className="mb-4 flex items-center justify-end">
+            <LoanScheduleExportButtons loan={loan} payments={payments} />
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-gray-500 dark:text-gray-400">Current balance</p>

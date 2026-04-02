@@ -26,7 +26,7 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
       )}
       {/* Sidebar - hidden on mobile unless open */}
       <div
-        className={`fixed lg:static inset-y-0 left-0 z-30 transform transition-transform duration-200 ease-out lg:translate-x-0 ${
+        className={`print:hidden fixed lg:static inset-y-0 left-0 z-30 transform transition-transform duration-200 ease-out lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ top: "52px" }}
@@ -35,7 +35,7 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
       </div>
       {/* Main content */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <div className="lg:hidden flex items-center gap-2 p-2 border-b border-gray-200 dark:border-gray-700/50 bg-white dark:bg-gray-800">
+        <div className="print:hidden lg:hidden flex items-center gap-2 p-2 border-b border-gray-200 dark:border-gray-700/50 bg-white dark:bg-gray-800">
           <button
             type="button"
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300"
