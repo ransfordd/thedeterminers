@@ -146,14 +146,20 @@ export function DashboardHeader({
                 ) : (
                   <ul className="divide-y divide-gray-100 dark:divide-gray-700">
                     {notifications.map((n) => (
-                      <li key={n.id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <p className="font-medium text-gray-900 dark:text-white text-sm">{n.title}</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 mt-0.5">
-                          {n.message}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {formatRelativeTime(new Date(n.createdAt))}
-                        </p>
+                      <li key={n.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <Link
+                          href={`${notificationsHref}/${n.id}`}
+                          onClick={() => setNotifOpen(false)}
+                          className="block px-4 py-3 text-left no-underline"
+                        >
+                          <p className="font-medium text-gray-900 dark:text-white text-sm">{n.title}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 mt-0.5">
+                            {n.message}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {formatRelativeTime(new Date(n.createdAt))}
+                          </p>
+                        </Link>
                       </li>
                     ))}
                   </ul>

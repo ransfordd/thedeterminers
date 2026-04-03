@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -19,6 +20,18 @@ export default async function AdminNotificationsPage() {
     { key: "notificationType", header: "Type", render: (r: { notificationType: string }) => <span className="capitalize">{r.notificationType.replace("_", " ")}</span> },
     { key: "isRead", header: "Read", render: (r: { isRead: boolean }) => r.isRead ? "Yes" : "No" },
     { key: "createdAt", header: "Date", render: (r: { createdAt: Date }) => new Date(r.createdAt).toLocaleString("en-GB") },
+    {
+      key: "id",
+      header: "Actions",
+      render: (r: { id: number }) => (
+        <Link
+          href={`/admin/notifications/${r.id}`}
+          className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+        >
+          View
+        </Link>
+      ),
+    },
   ];
 
   return (

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { formatBroadcastNotificationSms, sendSmsToUserIds } from "@/lib/sms";
 import { UserRole } from "@prisma/client";
 
 export type SendNotificationState = { success?: boolean; error?: string; sentCount?: number };
@@ -97,9 +98,13 @@ export async function sendNotification(
     await prisma.notification.createMany({ data: rows.slice(i, i + CREATE_MANY_CHUNK) });
   }
 
+  await sendSmsToUserIds(prisma, targetUserIds, formatBroadcastNotificationSms(title, message));
+
   revalidatePath("/admin/notifications");
   revalidatePath("/admin/notifications/send");
   revalidatePath("/manager/notifications");
+  revalidatePath("/client/notifications");
+  revalidatePath("/agent/notifications");
   return { success: true, sentCount: targetUserIds.length };
 }
 

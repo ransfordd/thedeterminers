@@ -88,7 +88,9 @@ export function SendNotificationForm({
             />
             <span>
               <span className="font-medium">One user</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">Choose from the list below</span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                Choose from the list below (clients also get SMS when applicable)
+              </span>
             </span>
           </label>
           <label className="flex items-start gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200">
@@ -101,7 +103,7 @@ export function SendNotificationForm({
             <span>
               <span className="font-medium">All active users</span>
               <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Everyone with an active account ({counts.allUsers.toLocaleString()})
+                Everyone with an active account ({counts.allUsers.toLocaleString()}); clients also get SMS
               </span>
             </span>
           </label>
@@ -129,7 +131,7 @@ export function SendNotificationForm({
             <span>
               <span className="font-medium">All clients</span>
               <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Active users with role Client ({counts.clients.toLocaleString()})
+                Active users with role Client ({counts.clients.toLocaleString()}); in-app and SMS
               </span>
             </span>
           </label>

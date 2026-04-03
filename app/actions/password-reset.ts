@@ -94,29 +94,6 @@ async function notifyAdminsPasswordResetPending(targetName: string, targetRole: 
   }).catch(() => { /* ignore */ });
 }
 
-/** TEMPORARY: plaintext OTP to approver when requester may lack SMS; remove when no longer needed. */
-async function notifyApproverPasswordResetOtp(
-  approverUserId: number,
-  targetUser: { username: string; firstName: string | null; lastName: string | null },
-  code: string
-): Promise<void> {
-  const displayName =
-    `${targetUser.firstName ?? ""} ${targetUser.lastName ?? ""}`.trim() || targetUser.username;
-  await prisma.notification
-    .create({
-      data: {
-        userId: approverUserId,
-        notificationType: "system_alert",
-        title: "Password reset code (temporary)",
-        message:
-          `You approved a password reset for ${displayName} (@${targetUser.username}). ` +
-          `Temporary workaround — share this code ONLY with them in person or through an approved channel: ${code}. ` +
-          `Expires in 15 minutes. SMS may also have been sent if their phone is on file.`,
-      },
-    })
-    .catch(() => { /* ignore */ });
-}
-
 async function sendOtpSms(userId: number, code: string): Promise<boolean> {
   const msg = `Your password reset code is ${code}. It expires in 15 minutes. If you did not request this, contact support immediately. — The Determiners`;
   return sendSmsToUserPhone(prisma, userId, msg);
@@ -410,27 +387,13 @@ export async function approvePasswordResetRequest(requestId: number): Promise<Ad
   });
 
   const sent = await sendOtpSms(req.userId, code);
-  const targetIsBusinessAdmin = req.user.role === "business_admin";
-
   if (!sent) {
-    if (targetIsBusinessAdmin) {
-      await notifyApproverPasswordResetOtp(adminId, req.user, code);
-      await logActivity(adminId, "password_reset_approved", `Approved password reset for user ${req.userId} (SMS not sent; code in approver notification)`, {
-        referenceId: req.id,
-        referenceType: "PasswordResetRequest",
-      }).catch(() => {});
-      revalidatePath("/admin/password-reset-requests");
-      revalidatePath("/admin");
-      return { success: true };
-    }
     await prisma.passwordResetRequest.update({
       where: { id: req.id },
       data: { status: "pending_approval", otpHash: null, otpExpiresAt: null, reviewedById: null, reviewedAt: null },
     });
     return { error: "SMS could not be sent. Check user phone and SMS settings, then try again." };
   }
-
-  await notifyApproverPasswordResetOtp(adminId, req.user, code);
 
   await logActivity(adminId, "password_reset_approved", `Approved password reset for user ${req.userId}`, {
     referenceId: req.id,

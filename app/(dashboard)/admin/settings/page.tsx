@@ -24,10 +24,15 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
   const success = params.success === "1" || params.success === "true";
   const errorMessage = typeof params.error === "string" ? params.error : null;
 
+  const sessionUserId = parseInt((session.user as { id?: string }).id ?? "0", 10);
+  const recentNotifWhere =
+    effectiveRole === "manager" && sessionUserId > 0 ? { userId: sessionUserId } : {};
+
   const [settings, holidays, recentNotifications] = await Promise.all([
     prisma.systemSetting.findMany({ orderBy: { settingKey: "asc" } }),
     prisma.holidaysCalendar.findMany({ orderBy: { holidayDate: "asc" } }),
     prisma.notification.findMany({
+      where: recentNotifWhere,
       orderBy: { createdAt: "desc" },
       take: 10,
       select: { id: true, title: true, message: true, notificationType: true, createdAt: true },
@@ -137,7 +142,10 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
           subtitle="Latest system notifications"
           icon={<i className="fas fa-history" />}
         >
-          <RecentNotifications notifications={recentNotifications} />
+          <RecentNotifications
+            notifications={recentNotifications}
+            detailBasePath={effectiveRole === "manager" ? "/manager/notifications" : "/admin/notifications"}
+          />
         </ModernCard>
       </div>
     </>

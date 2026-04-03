@@ -33,7 +33,7 @@ export default async function AdminNotificationsSendPage() {
     <>
       <PageHeader
         title="Send notification"
-        subtitle="Send an in-app notification to one user or broadcast to a group"
+        subtitle="In-app notification to selected users; clients also receive SMS when SMS is enabled and a phone is on file"
         icon={<i className="fas fa-bell" />}
         backHref="/admin/notifications"
         variant="primary"

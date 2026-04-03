@@ -7,6 +7,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { formatBroadcastNotificationSms, sendSmsToUserIds } from "@/lib/sms";
 
 export type UpdateSettingState = { success?: boolean; error?: string };
 
@@ -323,6 +324,13 @@ export async function sendNotification(
         sentVia: "system",
       })),
     });
+    if (targetRole === "all" || targetRole === "client") {
+      await sendSmsToUserIds(
+        prisma,
+        users.map((u) => u.id),
+        formatBroadcastNotificationSms(title, message)
+      );
+    }
     revalidatePath("/admin/settings");
     redirect("/admin/settings?success=1");
   } catch (e) {

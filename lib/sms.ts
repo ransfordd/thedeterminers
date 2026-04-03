@@ -213,6 +213,18 @@ export async function sendSms(recipients: string[], message: string): Promise<bo
   return false;
 }
 
+/** Max length for admin-broadcast SMS body (cost / provider limits). */
+const MAX_BROADCAST_NOTIFICATION_SMS_CHARS = 420;
+
+/** Plain-text body for in-app broadcast mirrored to SMS for clients. */
+export function formatBroadcastNotificationSms(title: string, message: string): string {
+  const t = title.trim();
+  const m = message.trim();
+  const combined = t ? `${t}\n\n${m}` : m;
+  if (combined.length <= MAX_BROADCAST_NOTIFICATION_SMS_CHARS) return combined;
+  return `${combined.slice(0, MAX_BROADCAST_NOTIFICATION_SMS_CHARS - 1)}…`;
+}
+
 /**
  * Send SMS to users by ID. Only active users with role `client` receive SMS; agent,
  * business_admin, and manager IDs are ignored. Uses User.phone; falls back to

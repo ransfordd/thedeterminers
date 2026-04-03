@@ -5,30 +5,43 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
 
-export default async function ClientNotificationsPage() {
+export default async function AgentNotificationsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  if ((session.user as { role?: string }).role !== "client") redirect("/dashboard");
+  if ((session.user as { role?: string }).role !== "agent") redirect("/dashboard");
 
-  const userId = (session.user as { id?: string }).id;
-  const numericId = userId ? parseInt(String(userId), 10) : 0;
+  const userId = parseInt((session.user as { id?: string }).id ?? "0", 10);
   const notifications = await prisma.notification.findMany({
-    where: { userId: numericId },
+    where: { userId: userId > 0 ? userId : 0 },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
+
   const columns = [
     { key: "title", header: "Title" },
-    { key: "message", header: "Message", render: (r: { message: string }) => <span className="line-clamp-2 max-w-md">{r.message}</span> },
-    { key: "notificationType", header: "Type", render: (r: { notificationType: string }) => <span className="capitalize">{r.notificationType.replace("_", " ")}</span> },
-    { key: "isRead", header: "Read", render: (r: { isRead: boolean }) => r.isRead ? "Yes" : "No" },
-    { key: "createdAt", header: "Date", render: (r: { createdAt: Date }) => new Date(r.createdAt).toLocaleString("en-GB") },
+    {
+      key: "message",
+      header: "Message",
+      render: (r: { message: string }) => <span className="line-clamp-2 max-w-xs">{r.message}</span>,
+    },
+    {
+      key: "notificationType",
+      header: "Type",
+      render: (r: { notificationType: string }) => (
+        <span className="capitalize">{r.notificationType.replace("_", " ")}</span>
+      ),
+    },
+    {
+      key: "createdAt",
+      header: "Date",
+      render: (r: { createdAt: Date }) => new Date(r.createdAt).toLocaleString("en-GB"),
+    },
     {
       key: "id",
       header: "Actions",
       render: (r: { id: number }) => (
         <Link
-          href={`/client/notifications/${r.id}`}
+          href={`/agent/notifications/${r.id}`}
           className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
         >
           View
@@ -40,15 +53,15 @@ export default async function ClientNotificationsPage() {
   return (
     <>
       <PageHeader
-        title="My Notifications"
-        subtitle="Your in-app notifications"
+        title="Notifications"
+        subtitle="View system notifications"
         icon={<i className="fas fa-bell" />}
-        backHref="/client"
+        backHref="/agent"
         variant="primary"
       />
       <ModernCard
         title="Recent Notifications"
-        subtitle="Payment reminders, cycle updates, and system alerts"
+        subtitle="System notifications"
         icon={<i className="fas fa-list" />}
       >
         <DataTable columns={columns} data={notifications} emptyMessage="No notifications yet." />

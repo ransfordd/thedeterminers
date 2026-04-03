@@ -45,6 +45,7 @@ const agentLinks: SidebarLink[] = [
   { href: "/agent/applications", label: "Applications", icon: "fa-clipboard-list" },
   { href: "/agent/transaction-history", label: "Transaction History", icon: "fa-history" },
   { href: "/agent/commission", label: "Commission", icon: "fa-percentage" },
+  { href: "/agent/notifications", label: "Notifications", icon: "fa-bell" },
 ];
 
 const clientLinks: SidebarLink[] = [

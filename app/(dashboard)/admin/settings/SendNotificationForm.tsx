@@ -15,7 +15,7 @@ export function SendNotificationForm() {
         Send Notification
       </h3>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-        Broadcast messages to users.
+        Broadcast in-app messages. For target <strong>All</strong> or <strong>Client</strong>, clients also receive SMS when SMS is enabled and they have a phone on file.
       </p>
       <form action={formAction} className="space-y-3">
         {state?.error && (

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type NotificationRow = {
   id: number;
   title: string;
@@ -6,7 +8,14 @@ type NotificationRow = {
   createdAt: Date | string;
 };
 
-export function RecentNotifications({ notifications }: { notifications: NotificationRow[] }) {
+export function RecentNotifications({
+  notifications,
+  detailBasePath = "/admin/notifications",
+}: {
+  notifications: NotificationRow[];
+  /** e.g. /admin/notifications or /manager/notifications */
+  detailBasePath?: string;
+}) {
   const typeBadgeClass: Record<string, string> = {
     system_alert: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200",
     payment_due: "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200",
@@ -33,9 +42,10 @@ export function RecentNotifications({ notifications }: { notifications: Notifica
           </p>
         ) : (
           notifications.map((n) => (
-            <div
+            <Link
               key={n.id}
-              className="flex justify-between items-start gap-2 p-2 border border-gray-100 dark:border-gray-800 rounded text-sm"
+              href={`${detailBasePath.replace(/\/$/, "")}/${n.id}`}
+              className="flex justify-between items-start gap-2 p-2 border border-gray-100 dark:border-gray-800 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors no-underline"
             >
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -45,6 +55,7 @@ export function RecentNotifications({ notifications }: { notifications: Notifica
                   {n.message.slice(0, 50)}
                   {n.message.length > 50 ? "..." : ""}
                 </div>
+                <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">View full message</div>
                 <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                   {new Date(n.createdAt).toLocaleString(undefined, {
                     month: "short",
@@ -61,7 +72,7 @@ export function RecentNotifications({ notifications }: { notifications: Notifica
               >
                 {n.notificationType.replace(/_/g, " ")}
               </span>
-            </div>
+            </Link>
           ))
         )}
       </div>
