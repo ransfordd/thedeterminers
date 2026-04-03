@@ -202,6 +202,15 @@ enum EmergencyWithdrawalStatus {
   completed
 }
 
+enum PasswordResetRequestStatus {
+  pending_approval
+  rejected
+  approved_pending_otp
+  otp_verified
+  completed
+  expired
+}
+
 model User {
   id              Int       @id @default(autoincrement())
   username        String    @unique @db.VarChar(50)
@@ -241,6 +250,32 @@ model User {
   userActivity UserActivity[]
   userDocuments UserDocument[]
   adminDataRetentionLogs AdminDataRetentionLog[]
+  passwordResetRequestsTarget PasswordResetRequest[] @relation("PasswordResetTarget")
+  passwordResetRequestsReviewed PasswordResetRequest[] @relation("PasswordResetReviewer")
+}
+
+model PasswordResetRequest {
+  id               Int                          @id @default(autoincrement())
+  userId           Int                          @map("user_id")
+  status           PasswordResetRequestStatus   @default(pending_approval)
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  expiresAt        DateTime                     @map("expires_at")
+  reviewedById     Int?                         @map("reviewed_by_id")
+  reviewedAt       DateTime?                    @map("reviewed_at")
+  rejectionReason  String?                      @map("rejection_reason") @db.Text
+  emailVerifiedAt  DateTime?                    @map("email_verified_at")
+  otpHash          String?                      @map("otp_hash") @db.VarChar(255)
+  otpExpiresAt     DateTime?                    @map("otp_expires_at")
+  otpAttempts      Int                          @default(0) @map("otp_attempts")
+  otpVerifiedAt    DateTime?                    @map("otp_verified_at")
+
+  user       User  @relation("PasswordResetTarget", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("PasswordResetReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([expiresAt])
+  @@index([status])
+  @@map("password_reset_request")
 }
 
 model AdminDataRetentionLog {

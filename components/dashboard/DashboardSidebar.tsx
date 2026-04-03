@@ -9,6 +9,7 @@ export interface SidebarLink {
 const adminLinks: SidebarLink[] = [
   { href: "/admin", label: "Dashboard", icon: "fa-tachometer-alt" },
   { href: "/admin/notifications", label: "Notifications", icon: "fa-bell" },
+  { href: "/admin/password-reset-requests", label: "Password resets", icon: "fa-key" },
   { href: "/admin/products", label: "Loan Products", icon: "fa-box" },
   { href: "/admin/applications", label: "Loan Applications", icon: "fa-file-alt" },
   { href: "/admin/clients", label: "Client Management", icon: "fa-users" },

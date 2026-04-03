@@ -309,3 +309,24 @@ export async function notifyClientByClientIdPremiumSms(
     })
   );
 }
+
+/**
+ * Send SMS to any active user's registered phone (e.g. password reset OTP for staff).
+ * Unlike sendSmsToUserIds, this does not restrict by role.
+ */
+export async function sendSmsToUserPhone(
+  prisma: PrismaClient,
+  userId: number,
+  message: string
+): Promise<boolean> {
+  const enabled = await isSmsEnabled();
+  if (!enabled) return false;
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { phone: true, status: true },
+  });
+  if (!u || u.status !== "active") return false;
+  const raw = (u.phone ?? "").trim();
+  if (!raw) return false;
+  return sendSms([raw], message);
+}

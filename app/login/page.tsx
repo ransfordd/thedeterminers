@@ -131,9 +131,12 @@ function LoginForm() {
                   <input type="checkbox" className="login-remember-checkbox" />
                   <span className="text-sm text-gray-800">Remember me</span>
                 </label>
-                <a href="#" className="text-sm font-normal text-[#667eea] hover:text-[#764ba2] hover:underline transition-colors">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm font-normal text-[#667eea] hover:text-[#764ba2] hover:underline transition-colors"
+                >
                   Forgot Password?
-                </a>
+                </Link>
               </div>
 
               <button
