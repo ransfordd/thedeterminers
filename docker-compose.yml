@@ -2,6 +2,7 @@
 # On Coolify: no app port here so host 3000 is free; Coolify proxy routes via domain.
 # Locally: docker-compose.override.yml adds ports so you get http://localhost:3000.
 # Postgres (host): port 5433 to avoid conflict with local PostgreSQL on 5432.
+# Production: susu_pgdata volume must persist across redeploys — never run `docker compose down -v` on live.
 
 services:
   postgres:

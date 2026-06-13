@@ -1,91 +1,68 @@
 /**
- * Automated verification of loan checklist (daily schedule, holidays, overdue, payment).
+ * Full admin walkthrough verification (automated).
  * Run: npx tsx scripts/verify-loan-flow.ts
  */
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
-import { isBusinessDayUtc, dateKeyUtc } from "../lib/business-days";
+import { isBusinessDayUtc, dateKeyUtc, holidaySetFromDates, toUtcDateOnly } from "../lib/business-days";
 import { buildLoanSchedule } from "../lib/loan-schedule";
 import { effectivePaymentStatus } from "../lib/loan-payment-status";
 import { applyAmountToLoanSchedule } from "../lib/loan-payment-apply";
-import { holidaySetFromDates } from "../lib/business-days";
+import { parseRepaymentFrequency } from "../lib/repayment-frequency";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("1. Holiday + product setup...");
-  const holidayDate = new Date(Date.UTC(2026, 5, 16)); // Tue Jun 16 2026
-  await prisma.holidaysCalendar.upsert({
-    where: { holidayDate },
-    update: { holidayName: "Verify Test Holiday" },
-    create: {
-      holidayDate,
-      holidayName: "Verify Test Holiday",
-      holidayType: "national",
-      createdById: 1,
-    },
-  });
+async function getAdminId() {
+  const admin = await prisma.user.findFirst({ where: { email: "admin@example.com" } });
+  assert.ok(admin, "admin@example.com not found — run npm run db:seed");
+  return admin.id;
+}
 
-  const product = await prisma.loanProduct.upsert({
-    where: { productCode: "VERIFY-DAILY" },
-    update: { interestRate: new Decimal(20), interestType: "flat", status: "active" },
-    create: {
-      productName: "Verify Daily Loan",
-      productCode: "VERIFY-DAILY",
-      minAmount: new Decimal(100),
-      maxAmount: new Decimal(10000),
-      interestRate: new Decimal(20),
-      interestType: "flat",
-      minTermMonths: 1,
-      maxTermMonths: 12,
-      status: "active",
-    },
-  });
+async function cleanupLoan(loanId: number, applicationId: number) {
+  await prisma.loanPayment.deleteMany({ where: { loanId } });
+  await prisma.loanRepaymentPlan.deleteMany({ where: { loanId } });
+  await prisma.loan.delete({ where: { id: loanId } });
+  await prisma.loanApplication.delete({ where: { id: applicationId } });
+}
 
-  const client = await prisma.client.findFirst({ where: { user: { email: "client@example.com" } } });
-  assert.ok(client, "seed client not found — run npm run db:seed");
-
-  console.log("2. Daily schedule with business days...");
-  const holidays = holidaySetFromDates([holidayDate]);
-  const disbursementDate = new Date(Date.UTC(2026, 5, 12)); // Fri Jun 12 2026
+async function createDisbursedLoan(input: {
+  clientId: number;
+  productId: number;
+  adminId: number;
+  disbursementDate: Date;
+  holidays: Set<string>;
+  suffix: string;
+}) {
   const schedule = buildLoanSchedule({
     principal: 1000,
     annualRatePercent: 20,
     interestType: "flat",
     termMonths: 1,
     frequency: "daily",
-    disbursementDate,
-    holidays,
+    disbursementDate: input.disbursementDate,
+    holidays: input.holidays,
   });
 
-  assert.ok(schedule.installmentCount >= 18, `expected ~19+ business days in 1 month, got ${schedule.installmentCount}`);
-  for (const d of schedule.dueDates) {
-    assert.ok(isBusinessDayUtc(d, holidays), `due date on non-business day: ${dateKeyUtc(d)}`);
-  }
-  assert.equal(dateKeyUtc(schedule.dueDates[0]!), "2026-06-15", "first due skips weekend");
-
-  console.log("3. Create and disburse test loan...");
-  const appNum = `APP-VERIFY-${Date.now()}`;
+  const appNum = `APP-${input.suffix}-${Date.now()}`;
   const application = await prisma.loanApplication.create({
     data: {
       applicationNumber: appNum,
-      clientId: client.id,
-      loanProductId: product.id,
+      clientId: input.clientId,
+      loanProductId: input.productId,
       requestedAmount: new Decimal(1000),
       requestedTermMonths: 1,
       repaymentFrequency: "daily",
-      purpose: "Automated verify test",
+      purpose: `Walkthrough test ${input.suffix}`,
       applicationStatus: "approved",
-      appliedDate: disbursementDate,
+      appliedDate: input.disbursementDate,
       approvedAmount: new Decimal(1000),
       approvedTermMonths: 1,
-      approvalDate: disbursementDate,
+      approvalDate: input.disbursementDate,
     },
   });
 
-  const admin = await prisma.user.findFirst({ where: { email: "admin@example.com" } });
-  const loanNumber = `LN-VERIFY-${Date.now()}`;
+  const loanNumber = `LN-${input.suffix}-${Date.now()}`;
   const { firstDue, dueDates, rows, totalRepayment, installmentCount } = schedule;
   const lastDue = dueDates[dueDates.length - 1]!;
 
@@ -94,21 +71,21 @@ async function main() {
       data: {
         loanNumber,
         applicationId: application.id,
-        clientId: client.id,
-        loanProductId: product.id,
+        clientId: input.clientId,
+        loanProductId: input.productId,
         principalAmount: new Decimal(1000),
         interestRate: new Decimal(20),
         termMonths: 1,
         monthlyPayment: rows[0]!.totalDue,
         totalRepaymentAmount: totalRepayment,
-        disbursementDate,
+        disbursementDate: input.disbursementDate,
         maturityDate: lastDue,
         currentBalance: totalRepayment,
         totalPaid: new Decimal(0),
         paymentsMade: 0,
         nextPaymentDate: firstDue,
         loanStatus: "active",
-        disbursedById: admin!.id,
+        disbursedById: input.adminId,
         disbursementMethod: "cash",
       },
     });
@@ -136,39 +113,143 @@ async function main() {
     return l;
   });
 
-  console.log("4. Overdue display...");
-  const today = new Date(Date.UTC(2026, 5, 20));
-  const firstPayment = await prisma.loanPayment.findFirst({
-    where: { loanId: loan.id },
+  return { loan, application, schedule };
+}
+
+async function countOverdueLoans(today: Date): Promise<number> {
+  return prisma.loan.count({
+    where: {
+      loanStatus: "active",
+      payments: {
+        some: {
+          dueDate: { lt: today },
+          paymentStatus: { in: ["pending", "partial", "overdue"] },
+        },
+      },
+    },
+  });
+}
+
+async function main() {
+  console.log("=== Phase A: Admin setup ===");
+  assert.equal(parseRepaymentFrequency("daily"), "daily", "daily frequency parse");
+  assert.equal(parseRepaymentFrequency(null), "daily", "default frequency should be daily");
+
+  const adminId = await getAdminId();
+  const holidayDate = new Date(Date.UTC(2026, 5, 16));
+  await prisma.holidaysCalendar.upsert({
+    where: { holidayDate },
+    update: { holidayName: "Walkthrough Test Holiday" },
+    create: {
+      holidayDate,
+      holidayName: "Walkthrough Test Holiday",
+      holidayType: "national",
+      createdById: adminId,
+    },
+  });
+
+  const product = await prisma.loanProduct.upsert({
+    where: { productCode: "WALKTHROUGH-20" },
+    update: { interestRate: new Decimal(20), interestType: "flat", status: "active" },
+    create: {
+      productName: "Walkthrough 20% Daily",
+      productCode: "WALKTHROUGH-20",
+      minAmount: new Decimal(100),
+      maxAmount: new Decimal(10000),
+      interestRate: new Decimal(20),
+      interestType: "flat",
+      minTermMonths: 1,
+      maxTermMonths: 12,
+      status: "active",
+    },
+  });
+  assert.equal(Number(product.interestRate), 20);
+  assert.equal(product.interestType, "flat");
+  console.log("  OK: holiday + 20% flat product");
+
+  const client = await prisma.client.findFirst({ where: { user: { email: "client@example.com" } } });
+  assert.ok(client, "client@example.com not found");
+  const agent = await prisma.agent.findFirst({ where: { user: { email: "agent@example.com" } } });
+  assert.ok(agent, "agent@example.com not found");
+
+  const holidays = holidaySetFromDates([holidayDate]);
+  const disbursementDate = new Date(Date.UTC(2026, 5, 12));
+
+  console.log("\n=== Phase B–C: Apply → approve → disburse → schedule ===");
+  const { loan, application, schedule } = await createDisbursedLoan({
+    clientId: client.id,
+    productId: product.id,
+    adminId,
+    disbursementDate,
+    holidays,
+    suffix: "CURRENT",
+  });
+  assert.equal(
+    (await prisma.loanApplication.findUnique({ where: { id: application.id } }))?.repaymentFrequency,
+    "daily",
+  );
+  console.log("  OK: daily application + disbursement");
+
+  console.log("\n=== Phase C: Verify schedule ===");
+  assert.ok(schedule.installmentCount >= 18);
+  for (const d of schedule.dueDates) {
+    assert.ok(isBusinessDayUtc(d, holidays), `non-business due: ${dateKeyUtc(d)}`);
+    assert.notEqual(dateKeyUtc(d), "2026-06-16", "holiday should be skipped");
+  }
+  assert.equal(dateKeyUtc(schedule.dueDates[0]!), "2026-06-15");
+  const total = schedule.rows.reduce((s, r) => s + Number(r.totalDue), 0);
+  assert.ok(Math.abs(total - 1016.67) < 0.1, `total ~1016.67, got ${total}`);
+  console.log(`  OK: ${schedule.installmentCount} business-day installments, total GHS ${total.toFixed(2)}`);
+
+  console.log("\n=== Phase D: Overdue (backdated disbursement) ===");
+  const backdatedDisburse = new Date(Date.UTC(2026, 4, 15));
+  const overdueBundle = await createDisbursedLoan({
+    clientId: client.id,
+    productId: product.id,
+    adminId,
+    disbursementDate: backdatedDisburse,
+    holidays,
+    suffix: "OVERDUE",
+  });
+  const today = toUtcDateOnly(new Date());
+  const firstOverduePayment = await prisma.loanPayment.findFirst({
+    where: { loanId: overdueBundle.loan.id },
     orderBy: { paymentNumber: "asc" },
   });
-  assert.ok(firstPayment);
-  const effective = effectivePaymentStatus(firstPayment.paymentStatus, firstPayment.dueDate, today);
-  assert.equal(effective, "overdue", "past-due installment should read as overdue");
+  assert.ok(firstOverduePayment);
+  assert.equal(
+    effectivePaymentStatus(firstOverduePayment.paymentStatus, firstOverduePayment.dueDate, today),
+    "overdue",
+  );
+  const overdueCount = await countOverdueLoans(today);
+  assert.ok(overdueCount >= 1, "admin overdue metric should count backdated loan");
+  console.log(`  OK: overdue status + admin overdue count = ${overdueCount}`);
 
-  console.log("5. Agent payment apply...");
-  const payAmount = Number(firstPayment.totalDue);
+  console.log("\n=== Phase E: Agent payment ===");
+  const payTarget = await prisma.loanPayment.findFirst({
+    where: { loanId: loan.id, paymentStatus: "pending" },
+    orderBy: { paymentNumber: "asc" },
+  });
+  assert.ok(payTarget);
   const payRes = await applyAmountToLoanSchedule({
     loanId: loan.id,
     clientId: client.id,
-    totalAmount: payAmount,
-    paymentDate: today,
-    notes: "Verify test payment",
-    collectedById: (await prisma.agent.findFirst({ where: { user: { email: "agent@example.com" } } }))?.id,
+    totalAmount: Number(payTarget.totalDue),
+    paymentDate: new Date(),
+    notes: "Walkthrough agent payment",
+    collectedById: agent.id,
   });
-  assert.equal(payRes.success, true, payRes.success ? "" : (payRes as { error: string }).error);
+  assert.equal(payRes.success, true);
+  const afterPay = await prisma.loanPayment.findUnique({ where: { id: payTarget.id } });
+  assert.equal(afterPay?.paymentStatus, "paid");
+  console.log("  OK: installment marked paid");
 
-  const paid = await prisma.loanPayment.findUnique({ where: { id: firstPayment.id } });
-  assert.equal(paid?.paymentStatus, "paid");
+  console.log("\n=== Cleanup ===");
+  await cleanupLoan(loan.id, application.id);
+  await cleanupLoan(overdueBundle.loan.id, overdueBundle.application.id);
+  await prisma.holidaysCalendar.deleteMany({ where: { holidayName: "Walkthrough Test Holiday" } });
 
-  console.log("6. Cleanup test loan...");
-  await prisma.loanPayment.deleteMany({ where: { loanId: loan.id } });
-  await prisma.loanRepaymentPlan.deleteMany({ where: { loanId: loan.id } });
-  await prisma.loan.delete({ where: { id: loan.id } });
-  await prisma.loanApplication.delete({ where: { id: application.id } });
-  await prisma.holidaysCalendar.deleteMany({ where: { holidayName: "Verify Test Holiday" } });
-
-  console.log("\nAll loan flow checks passed.");
+  console.log("\nAll admin walkthrough checks passed.");
 }
 
 main()

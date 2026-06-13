@@ -6,6 +6,7 @@ import { getCurrencyDisplay } from "@/lib/system-settings";
 import { getClientByUserId } from "@/lib/dashboard";
 import { getClientLoanSchedule, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { paymentStatusLabel } from "@/lib/loan-payment-status";
+import { formatRepaymentFrequency, formatInterestCalculationNote, installmentLabelForFrequency } from "@/lib/repayment-frequency";
 import { PrintButton } from "./PrintButton";
 import { prisma } from "@/lib/db";
 
@@ -83,19 +84,46 @@ export default async function ClientLoanSchedulePrintPage() {
           </div>
           <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
             <div>
-              <dt className="text-gray-600 dark:text-gray-400 print:text-black">Current balance</dt>
-              <dd className="font-medium text-gray-900 dark:text-white print:text-black">{formatCurrencyFromGhs(loan.currentBalance, display)}</dd>
+              <dt className="text-gray-600 dark:text-gray-400 print:text-black">Principal</dt>
+              <dd className="font-medium text-gray-900 dark:text-white print:text-black">{formatCurrencyFromGhs(loan.principalAmount, display)}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-600 dark:text-gray-400 print:text-black">Total interest</dt>
+              <dd className="font-medium text-gray-900 dark:text-white print:text-black">
+                {formatCurrencyFromGhs(loan.totalInterestAmount, display)}
+                <span className="block text-xs font-normal text-gray-500 dark:text-gray-400 print:text-black mt-0.5">
+                  {formatInterestCalculationNote(loan.interestRate, loan.termMonths, loan.interestType)}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-600 dark:text-gray-400 print:text-black">Term</dt>
+              <dd className="font-medium text-gray-900 dark:text-white print:text-black">{loan.termMonths} month{loan.termMonths === 1 ? "" : "s"}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-600 dark:text-gray-400 print:text-black">Repayment</dt>
+              <dd className="font-medium text-gray-900 dark:text-white print:text-black">{formatRepaymentFrequency(loan.repaymentFrequency ?? "daily")}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-600 dark:text-gray-400 print:text-black">Interest rate</dt>
+              <dd className="font-medium text-gray-900 dark:text-white print:text-black">
+                {loan.interestRate}% ({loan.interestType.replace("_", " ")})
+              </dd>
             </div>
             <div>
               <dt className="text-gray-600 dark:text-gray-400 print:text-black">Total to repay</dt>
               <dd className="font-medium text-gray-900 dark:text-white print:text-black">{formatCurrencyFromGhs(loan.totalRepaymentAmount, display)}</dd>
             </div>
             <div>
+              <dt className="text-gray-600 dark:text-gray-400 print:text-black">Current balance</dt>
+              <dd className="font-medium text-gray-900 dark:text-white print:text-black">{formatCurrencyFromGhs(loan.currentBalance, display)}</dd>
+            </div>
+            <div>
               <dt className="text-gray-600 dark:text-gray-400 print:text-black">Total repaid</dt>
               <dd className="font-medium text-gray-900 dark:text-white print:text-black">{formatCurrencyFromGhs(loan.totalPaid, display)}</dd>
             </div>
             <div>
-              <dt className="text-gray-600 dark:text-gray-400 print:text-black">Installment amount</dt>
+              <dt className="text-gray-600 dark:text-gray-400 print:text-black">{installmentLabelForFrequency(loan.repaymentFrequency)}</dt>
               <dd className="font-medium text-gray-900 dark:text-white print:text-black">{formatCurrencyFromGhs(loan.monthlyPayment, display)}</dd>
             </div>
           </dl>
@@ -112,6 +140,8 @@ export default async function ClientLoanSchedulePrintPage() {
               <tr className="border-b border-gray-200 dark:border-gray-700">
                 <th className="text-left py-2 px-3 font-medium text-gray-900 dark:text-gray-200 print:text-black">Payment #</th>
                 <th className="text-left py-2 px-3 font-medium text-gray-900 dark:text-gray-200 print:text-black">Due Date</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-900 dark:text-gray-200 print:text-black">Principal</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-900 dark:text-gray-200 print:text-black">Interest</th>
                 <th className="text-left py-2 px-3 font-medium text-gray-900 dark:text-gray-200 print:text-black">Total Due</th>
                 <th className="text-left py-2 px-3 font-medium text-gray-900 dark:text-gray-200 print:text-black">Amount Paid</th>
                 <th className="text-left py-2 px-3 font-medium text-gray-900 dark:text-gray-200 print:text-black">Status</th>
@@ -121,7 +151,7 @@ export default async function ClientLoanSchedulePrintPage() {
             <tbody>
               {payments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-6 px-3 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={8} className="py-6 px-3 text-center text-gray-500 dark:text-gray-400">
                     {loan
                       ? "No payment schedule entries yet."
                       : pendingDisbursement
@@ -134,6 +164,8 @@ export default async function ClientLoanSchedulePrintPage() {
                   <tr key={p.paymentNumber} className="border-b border-gray-100 dark:border-gray-800">
                     <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{p.paymentNumber}</td>
                     <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{new Date(p.dueDate).toLocaleDateString("en-GB")}</td>
+                    <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{formatCurrencyFromGhs(p.principalAmount, display)}</td>
+                    <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{formatCurrencyFromGhs(p.interestAmount, display)}</td>
                     <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{formatCurrencyFromGhs(p.totalDue, display)}</td>
                     <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{formatCurrencyFromGhs(p.amountPaid, display)}</td>
                     <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{paymentStatusLabel(p.paymentStatus)}</td>

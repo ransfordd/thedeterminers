@@ -4,6 +4,10 @@ import Link from "next/link";
 
 type LoanSummary = {
   loanNumber: string;
+  principalAmount: number;
+  totalInterestAmount: number;
+  interestRate: number;
+  interestType: string;
   currentBalance: number;
   monthlyPayment: number;
   totalPaid: number;
@@ -13,6 +17,8 @@ type LoanSummary = {
 type LoanPaymentRow = {
   paymentNumber: number;
   dueDate: Date | string;
+  principalAmount: number;
+  interestAmount: number;
   totalDue: number;
   amountPaid: number;
   paymentStatus: string;
@@ -45,15 +51,18 @@ function buildLoanScheduleCsv(args: {
 
   if (loan) {
     lines.push(["Loan Number", loan.loanNumber].map(escapeCsvCell).join(","));
+    lines.push(["Principal", loan.principalAmount.toFixed(2)].map(escapeCsvCell).join(","));
+    lines.push(["Total Interest", loan.totalInterestAmount.toFixed(2)].map(escapeCsvCell).join(","));
+    lines.push(["Interest Rate", `${loan.interestRate}% ${loan.interestType.replace("_", " ")}`].map(escapeCsvCell).join(","));
+    lines.push(["Total To Repay", loan.totalRepaymentAmount.toFixed(2)].map(escapeCsvCell).join(","));
     lines.push(["Current Balance", loan.currentBalance.toFixed(2)].map(escapeCsvCell).join(","));
     lines.push(["Typical Installment", loan.monthlyPayment.toFixed(2)].map(escapeCsvCell).join(","));
     lines.push(["Total Repaid", loan.totalPaid.toFixed(2)].map(escapeCsvCell).join(","));
-    lines.push(["Total To Repay", loan.totalRepaymentAmount.toFixed(2)].map(escapeCsvCell).join(","));
     lines.push("");
   }
 
   lines.push(
-    ["Payment #", "Due Date", "Total Due", "Amount Paid", "Status", "Paid On"]
+    ["Payment #", "Due Date", "Principal", "Interest", "Total Due", "Amount Paid", "Status", "Paid On"]
       .map(escapeCsvCell)
       .join(",")
   );
@@ -62,6 +71,8 @@ function buildLoanScheduleCsv(args: {
       [
         p.paymentNumber,
         fmtDate(p.dueDate),
+        Number(p.principalAmount ?? 0).toFixed(2),
+        Number(p.interestAmount ?? 0).toFixed(2),
         Number(p.totalDue ?? 0).toFixed(2),
         Number(p.amountPaid ?? 0).toFixed(2),
         p.paymentStatus ?? "",
@@ -112,4 +123,3 @@ export function LoanScheduleExportButtons(props: { loan: LoanSummary | null; pay
     </div>
   );
 }
-

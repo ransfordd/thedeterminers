@@ -7,7 +7,7 @@ import { getClientLoanSchedule, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
 import { LoanScheduleExportButtons } from "./LoanScheduleExportButtons";
 import { LoanPaymentStatusBadge } from "@/components/dashboard/LoanPaymentStatusBadge";
-import { formatRepaymentFrequency } from "@/lib/repayment-frequency";
+import { formatRepaymentFrequency, formatInterestCalculationNote, installmentLabelForFrequency } from "@/lib/repayment-frequency";
 import type { PaymentStatus } from "@prisma/client";
 
 export default async function ClientLoansPage() {
@@ -33,6 +33,8 @@ export default async function ClientLoansPage() {
   const columns = [
     { key: "paymentNumber", header: "Payment #" },
     { key: "dueDate", header: "Due Date", render: (r: { dueDate: Date }) => new Date(r.dueDate).toLocaleDateString("en-GB") },
+    { key: "principalAmount", header: "Principal", render: (r: { principalAmount: number }) => formatCurrencyFromGhs(r.principalAmount, display) },
+    { key: "interestAmount", header: "Interest", render: (r: { interestAmount: number }) => formatCurrencyFromGhs(r.interestAmount, display) },
     { key: "totalDue", header: "Total Due", render: (r: { totalDue: number }) => formatCurrencyFromGhs(r.totalDue, display) },
     { key: "amountPaid", header: "Amount Paid", render: (r: { amountPaid: number }) => formatCurrencyFromGhs(r.amountPaid, display) },
     { key: "paymentStatus", header: "Status", render: (r: { paymentStatus: PaymentStatus }) => <LoanPaymentStatusBadge status={r.paymentStatus} /> },
@@ -80,29 +82,59 @@ export default async function ClientLoansPage() {
       {loan && (
         <ModernCard
           title={`Loan ${loan.loanNumber}`}
-          subtitle={`Current balance: ${formatCurrencyFromGhs(loan.currentBalance, display)} · Typical installment: ${formatCurrencyFromGhs(loan.monthlyPayment, display)}`}
+          subtitle={`${formatRepaymentFrequency(loan.repaymentFrequency ?? "daily")} · ${loan.termMonths} month${loan.termMonths === 1 ? "" : "s"} · Current balance: ${formatCurrencyFromGhs(loan.currentBalance, display)}`}
           icon={<i className="fas fa-wallet" />}
           className="mb-6"
         >
           <div className="mb-4 flex items-center justify-end">
             <LoanScheduleExportButtons loan={loan} payments={payments} />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
             <div>
-              <p className="text-gray-500 dark:text-gray-400">Current balance</p>
-              <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.currentBalance, display)}</p>
+              <p className="text-gray-500 dark:text-gray-400">Principal</p>
+              <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.principalAmount, display)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Total interest</p>
+              <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.totalInterestAmount, display)}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {formatInterestCalculationNote(loan.interestRate, loan.termMonths, loan.interestType)}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Term</p>
+              <p className="font-semibold text-lg">{loan.termMonths} month{loan.termMonths === 1 ? "" : "s"}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Repayment</p>
+              <p className="font-semibold text-lg">{formatRepaymentFrequency(loan.repaymentFrequency ?? "daily")}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Interest rate</p>
+              <p className="font-semibold text-lg">
+                {loan.interestRate}%{" "}
+                <span className="text-sm font-normal capitalize text-gray-500 dark:text-gray-400">
+                  ({loan.interestType.replace("_", " ")})
+                </span>
+              </p>
             </div>
             <div>
               <p className="text-gray-500 dark:text-gray-400">Total to repay</p>
               <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.totalRepaymentAmount, display)}</p>
             </div>
             <div>
-              <p className="text-gray-500 dark:text-gray-400">Total repaid</p>
-              <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.totalPaid, display)}</p>
+              <p className="text-gray-500 dark:text-gray-400">Current balance</p>
+              <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.currentBalance, display)}</p>
             </div>
             <div>
-              <p className="text-gray-500 dark:text-gray-400">Installment amount</p>
+              <p className="text-gray-500 dark:text-gray-400">{installmentLabelForFrequency(loan.repaymentFrequency)}</p>
               <p className="font-semibold text-lg">{formatCurrencyFromGhs(loan.monthlyPayment, display)}</p>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Total repaid</p>
+              <p className="font-semibold">{formatCurrencyFromGhs(loan.totalPaid, display)}</p>
             </div>
           </div>
         </ModernCard>

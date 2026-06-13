@@ -66,6 +66,13 @@ export default async function AdminApplicationDetailPage({
             <dd>{agentName}</dd>
             <dt className="text-gray-500 dark:text-gray-400">Product</dt>
             <dd>{application.product.productName}</dd>
+            <dt className="text-gray-500 dark:text-gray-400">Interest rate</dt>
+            <dd>
+              {toNum(application.product.interestRate)}%{" "}
+              <span className="capitalize text-gray-600 dark:text-gray-300">
+                ({application.product.interestType.replace("_", " ")})
+              </span>
+            </dd>
             <dt className="text-gray-500 dark:text-gray-400">Requested amount</dt>
             <dd>{formatCurrencyFromGhs(toNum(application.requestedAmount), display)}</dd>
             <dt className="text-gray-500 dark:text-gray-400">Requested term</dt>

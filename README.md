@@ -86,7 +86,9 @@ To get **app + PostgreSQL + Redis** from one deploy on Coolify, use the **Docker
    - `NEXTAUTH_URL`: your public URL (e.g. `https://yourdomain.com`).
 8. **Profile pictures & uploads**: Files are stored under `/app/public/uploads` in the container. Without a **persistent volume**, images disappear after redeploy or restart (the DB still points at the old path). In Coolify, add a volume mounted at **`/app/public/uploads`** (or the whole `/app/public` if you prefer) so uploads survive restarts.
 
-After the first deploy, the app runs `prisma db push` and `prisma db seed` on startup, so the database is migrated and seeded automatically.
+On startup the app runs **`prisma db push`** only (schema sync). It does **not** run seed automatically. Seed is for first install or manual use: `npm run db:seed` locally, or **Admin → System Settings → Run seed now**. Re-seed does not delete existing clients, loans, or transactions.
+
+**Redeploying live production does not wipe the database** as long as you do not delete the Postgres volume (`susu_pgdata`). See [**docs/DEPLOYMENT.md**](docs/DEPLOYMENT.md) for the full Coolify checklist.
 
 ### Seed fails: "credentials for susu are not valid"
 
@@ -128,7 +130,7 @@ If you already have PostgreSQL (and optionally Redis) installed:
 
 Project documentation lives in **`docs/`** so anyone can understand the project, its functions, and its displays:
 
-- [**OVERVIEW.md**](docs/OVERVIEW.md) – What the system does, tech stack, folder structure
+- [**DEPLOYMENT.md**](docs/DEPLOYMENT.md) – Safe Coolify redeploy, backups, smoke test (live data preserved)
 - [**ARCHITECTURE.md**](docs/ARCHITECTURE.md) – Data flow, auth, Server Actions vs Route Handlers vs engines
 - [**FEATURES.md**](docs/FEATURES.md) – Features by role (admin, manager, agent, client)
 - [**DISPLAYS.md**](docs/DISPLAYS.md) – Main screens and flows with routes

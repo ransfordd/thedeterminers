@@ -15,7 +15,7 @@ export function DeploymentCard() {
         Deployment &amp; seeding
       </h3>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-        Database seed runs automatically on each deployment (Docker/Compose startup). It ensures default system settings and default users (admin, manager, agent, client) exist. You can also run it manually below.
+        On deploy, Docker Compose runs <strong className="font-medium text-gray-700 dark:text-gray-300">prisma db push</strong> only (schema sync). Seed is <strong className="font-medium text-gray-700 dark:text-gray-300">not</strong> run automatically — use the button below for first install or to ensure default system settings and demo users exist. Re-seed does not delete live clients, loans, or transactions.
       </p>
       <form action={formAction} className="flex flex-wrap items-center gap-3">
         <button

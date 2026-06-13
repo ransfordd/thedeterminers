@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { getClientDashboardData, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { getCurrencyDisplay } from "@/lib/system-settings";
+import { installmentLabelForFrequency } from "@/lib/repayment-frequency";
 import {
   StatCard,
   WelcomeBanner,
@@ -141,7 +142,9 @@ export default async function ClientDashboardPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Monthly Payment</p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  {installmentLabelForFrequency(activeLoan.repaymentPlan?.frequency)}
+                </p>
                 <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrencyFromGhs(Number(activeLoan.monthlyPayment), display)}</p>
               </div>
             </div>

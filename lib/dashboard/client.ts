@@ -210,7 +210,10 @@ export async function getClientDashboardData(userId: number) {
       prisma.loan.findFirst({
         where: { clientId, loanStatus: "active" },
         orderBy: { id: "desc" },
-        include: { product: true },
+        include: {
+          product: true,
+          repaymentPlan: { select: { frequency: true } },
+        },
       }),
       prisma.savingsAccount.findUnique({
         where: { clientId },
@@ -455,6 +458,10 @@ export async function getClientLoanSchedule(clientId: number) {
   const loan = await prisma.loan.findFirst({
     where: { clientId, loanStatus: "active" },
     orderBy: { id: "desc" },
+    include: {
+      product: { select: { interestType: true } },
+      repaymentPlan: { select: { frequency: true } },
+    },
   });
   if (!loan) {
     const pendingDisbursement = await prisma.loanApplication.findFirst({
@@ -493,6 +500,12 @@ export async function getClientLoanSchedule(clientId: number) {
   return {
     loan: {
       loanNumber: loan.loanNumber,
+      principalAmount: toNum(loan.principalAmount),
+      interestRate: toNum(loan.interestRate),
+      interestType: loan.product.interestType,
+      termMonths: loan.termMonths,
+      repaymentFrequency: loan.repaymentPlan?.frequency ?? null,
+      totalInterestAmount: Math.max(0, toNum(loan.totalRepaymentAmount) - toNum(loan.principalAmount)),
       currentBalance: toNum(loan.currentBalance),
       monthlyPayment: toNum(loan.monthlyPayment),
       totalPaid: toNum(loan.totalPaid),
@@ -501,6 +514,8 @@ export async function getClientLoanSchedule(clientId: number) {
     payments: payments.map((p) => ({
       paymentNumber: p.paymentNumber,
       dueDate: p.dueDate,
+      principalAmount: toNum(p.principalAmount),
+      interestAmount: toNum(p.interestAmount),
       totalDue: toNum(p.totalDue),
       amountPaid: toNum(p.amountPaid),
       paymentStatus: effectivePaymentStatus(p.paymentStatus, p.dueDate),
