@@ -96,11 +96,12 @@ export function ApplyLoanForm({ clientId, products }: { clientId: number; produc
           <select
             id="repaymentFrequency"
             name="repaymentFrequency"
-            defaultValue="monthly"
+            defaultValue="daily"
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
           >
+            <option value="daily">Daily (business days, like Susu)</option>
+            <option value="weekly">Weekly (every 7 days, business day adjusted)</option>
             <option value="monthly">Monthly (same calendar day each month)</option>
-            <option value="weekly">Weekly (every 7 days)</option>
           </select>
         </div>
       </div>

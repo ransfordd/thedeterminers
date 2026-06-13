@@ -15,11 +15,7 @@ export default async function AdminActiveLoansPage() {
   const display = await getCurrencyDisplay();
   const loans = await getActiveLoansList();
   const totalBalance = loans.reduce((s, l) => s + l.currentBalance, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const overdueCount = loans.filter(
-    (l) => l.currentBalance > 0 && new Date(l.maturityDate) < today
-  ).length;
+  const overdueCount = loans.filter((l) => l.hasOverdueInstallment).length;
 
   return (
     <>
@@ -68,8 +64,7 @@ export default async function AdminActiveLoansPage() {
               </thead>
               <tbody>
                 {loans.map((l) => {
-                  const isOverdue =
-                    l.currentBalance > 0 && new Date(l.maturityDate) < today;
+                  const isOverdue = l.hasOverdueInstallment;
                   return (
                     <tr
                       key={l.id}

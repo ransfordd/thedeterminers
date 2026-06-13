@@ -1,49 +1,80 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import type { InterestType } from "@prisma/client";
 import type { RepaymentFrequency } from "@prisma/client";
+import {
+  addDaysUtc,
+  addMonthsUtc,
+  countBusinessDaysInTerm,
+  isBusinessDayUtc,
+  nextBusinessDayUtc,
+  toUtcDateOnly,
+  type HolidaySet,
+} from "@/lib/business-days";
 
-/** Normalize to UTC midnight for consistent @db.Date storage. */
-export function toUtcDateOnly(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+export { addDaysUtc, addMonthsUtc, toUtcDateOnly };
+
+export function periodsPerYearForFrequency(frequency: RepaymentFrequency): number {
+  if (frequency === "daily") return 260;
+  if (frequency === "weekly") return 52;
+  return 12;
 }
 
-export function addDaysUtc(d: Date, days: number): Date {
-  const x = toUtcDateOnly(d);
-  x.setUTCDate(x.getUTCDate() + days);
-  return x;
-}
-
-/** Add calendar months; clamp day to end of month when needed (e.g. Jan 31 + 1 month → Feb 28). */
-export function addMonthsUtc(d: Date, months: number): Date {
-  const base = toUtcDateOnly(d);
-  const y = base.getUTCFullYear();
-  const m = base.getUTCMonth();
-  const day = base.getUTCDate();
-  const targetM = m + months;
-  const lastDayOfTarget = new Date(Date.UTC(y, targetM + 1, 0)).getUTCDate();
-  const dayClamped = Math.min(day, lastDayOfTarget);
-  return new Date(Date.UTC(y, targetM, dayClamped));
-}
-
-export function installmentCountForTerm(termMonths: number, frequency: RepaymentFrequency): number {
+export function installmentCountForTerm(
+  termMonths: number,
+  frequency: RepaymentFrequency,
+  disbursementDate?: Date,
+  holidays: HolidaySet = new Set(),
+): number {
   if (frequency === "monthly") return Math.max(1, termMonths);
-  return Math.max(1, Math.ceil((termMonths * 30) / 7));
+  if (frequency === "weekly") return Math.max(1, Math.ceil((termMonths * 30) / 7));
+  if (disbursementDate) {
+    return countBusinessDaysInTerm(disbursementDate, termMonths, holidays);
+  }
+  return Math.max(1, Math.round((termMonths * 260) / 12));
 }
 
-/** First due: weekly = disbursement + 7 days; monthly = same day next month (clamped). */
-export function firstDueDateFromDisbursement(disbursementDate: Date, frequency: RepaymentFrequency): Date {
+/** First due date; weekends and holidays are skipped to the next business day. */
+export function firstDueDateFromDisbursement(
+  disbursementDate: Date,
+  frequency: RepaymentFrequency,
+  holidays: HolidaySet = new Set(),
+): Date {
   const base = toUtcDateOnly(disbursementDate);
-  if (frequency === "weekly") return addDaysUtc(base, 7);
-  return addMonthsUtc(base, 1);
+  if (frequency === "daily") {
+    return nextBusinessDayUtc(addDaysUtc(base, 1), holidays);
+  }
+  if (frequency === "weekly") {
+    return nextBusinessDayUtc(addDaysUtc(base, 7), holidays);
+  }
+  return nextBusinessDayUtc(addMonthsUtc(base, 1), holidays);
 }
 
-export function buildDueDates(firstDue: Date, count: number, frequency: RepaymentFrequency): Date[] {
+export function buildDueDates(
+  firstDue: Date,
+  count: number,
+  frequency: RepaymentFrequency,
+  holidays: HolidaySet = new Set(),
+): Date[] {
   const dates: Date[] = [];
-  let cursor = toUtcDateOnly(firstDue);
+  if (frequency === "daily") {
+    let cursor = nextBusinessDayUtc(firstDue, holidays);
+    while (dates.length < count) {
+      if (isBusinessDayUtc(cursor, holidays)) {
+        dates.push(cursor);
+      }
+      cursor = addDaysUtc(cursor, 1);
+    }
+    return dates;
+  }
+
+  let cursor = nextBusinessDayUtc(firstDue, holidays);
   for (let i = 0; i < count; i++) {
     dates.push(cursor);
-    if (frequency === "weekly") cursor = addDaysUtc(cursor, 7);
-    else cursor = addMonthsUtc(cursor, 1);
+    if (frequency === "weekly") {
+      cursor = nextBusinessDayUtc(addDaysUtc(cursor, 7), holidays);
+    } else {
+      cursor = nextBusinessDayUtc(addMonthsUtc(cursor, 1), holidays);
+    }
   }
   return dates;
 }
@@ -97,7 +128,7 @@ export function computeInstallmentBreakdown(
     return rows;
   }
 
-  const periodsPerYear = frequency === "weekly" ? 52 : 12;
+  const periodsPerYear = periodsPerYearForFrequency(frequency);
   const r = R.div(100).div(periodsPerYear);
   if (r.eq(0)) {
     const per = roundMoney(P.div(n));
@@ -137,4 +168,29 @@ export function computeInstallmentBreakdown(
 
 export function totalRepaymentFromInstallments(rows: InstallmentAmounts[]): Decimal {
   return rows.reduce((a, r) => a.add(r.totalDue), new Decimal(0));
+}
+
+/** Build full schedule (counts, due dates, amounts) for disbursement. */
+export function buildLoanSchedule(input: {
+  principal: number;
+  annualRatePercent: number;
+  interestType: InterestType;
+  termMonths: number;
+  frequency: RepaymentFrequency;
+  disbursementDate: Date;
+  holidays?: HolidaySet;
+}) {
+  const holidays = input.holidays ?? new Set();
+  const n = installmentCountForTerm(input.termMonths, input.frequency, input.disbursementDate, holidays);
+  const firstDue = firstDueDateFromDisbursement(input.disbursementDate, input.frequency, holidays);
+  const dueDates = buildDueDates(firstDue, n, input.frequency, holidays);
+  const rows = computeInstallmentBreakdown(
+    new Decimal(input.principal),
+    new Decimal(input.annualRatePercent),
+    input.interestType,
+    input.termMonths,
+    n,
+    input.frequency,
+  );
+  return { installmentCount: n, firstDue, dueDates, rows, totalRepayment: totalRepaymentFromInstallments(rows) };
 }

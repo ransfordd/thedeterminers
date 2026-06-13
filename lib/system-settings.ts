@@ -161,7 +161,7 @@ export async function getLoanDefaults(): Promise<{
     "late_payment_fee",
   ]);
   return {
-    defaultInterestRate: parseFloat(map.get("default_interest_rate") ?? "0.5") || 0.5,
+    defaultInterestRate: parseFloat(map.get("default_interest_rate") ?? "20") || 20,
     minLoanAmount: parseFloat(map.get("min_loan_amount") ?? "5") || 5,
     maxLoanAmount: parseFloat(map.get("max_loan_amount") ?? "8") || 8,
     latePaymentFee: parseFloat(map.get("late_payment_fee") ?? "1") || 1,

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getTodayStart, getMonthStart } from "./utils";
+import { toUtcDateOnly } from "@/lib/business-days";
 import type {
   AdminManagerMetrics,
   RecentTransaction,
@@ -104,8 +105,12 @@ export async function getAdminManagerMetrics(includeRevenue: boolean): Promise<A
     prisma.loan.count({
       where: {
         loanStatus: "active",
-        currentBalance: { gt: 0 },
-        maturityDate: { lt: todayStart },
+        payments: {
+          some: {
+            dueDate: { lt: toUtcDateOnly(new Date()) },
+            paymentStatus: { in: ["pending", "partial", "overdue"] },
+          },
+        },
       },
     }),
     prisma.dailyCollection.aggregate({

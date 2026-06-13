@@ -86,7 +86,7 @@ export async function runSeed(prisma: PrismaClient): Promise<void> {
       category: "system",
       description: "EUR per 1 GHS (display)",
     },
-    { key: "default_interest_rate", value: "0.5", type: "number", category: "loans", description: "Default interest rate (%)" },
+    { key: "default_interest_rate", value: "20", type: "number", category: "loans", description: "Default interest rate (%)" },
     { key: "min_loan_amount", value: "5", type: "number", category: "loans", description: "Minimum loan amount" },
     { key: "max_loan_amount", value: "8", type: "number", category: "loans", description: "Maximum loan amount" },
     { key: "late_payment_fee", value: "1", type: "number", category: "loans", description: "Late payment fee" },

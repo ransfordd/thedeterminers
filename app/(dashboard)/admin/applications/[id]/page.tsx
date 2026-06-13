@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader, ModernCard } from "@/components/dashboard";
 import { formatCurrencyFromGhs } from "@/lib/dashboard";
+import { formatRepaymentFrequency } from "@/lib/repayment-frequency";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { ApplicationReviewActions } from "./ApplicationReviewActions";
 import { DisburseLoanForm } from "./DisburseLoanForm";
@@ -70,7 +71,7 @@ export default async function AdminApplicationDetailPage({
             <dt className="text-gray-500 dark:text-gray-400">Requested term</dt>
             <dd>{application.requestedTermMonths} months</dd>
             <dt className="text-gray-500 dark:text-gray-400">Repayment frequency</dt>
-            <dd>{application.repaymentFrequency === "weekly" ? "Weekly" : "Monthly"}</dd>
+            <dd>{formatRepaymentFrequency(application.repaymentFrequency)}</dd>
             <dt className="text-gray-500 dark:text-gray-400">Purpose</dt>
             <dd>{application.purpose}</dd>
             <dt className="text-gray-500 dark:text-gray-400">Status</dt>

@@ -6,6 +6,9 @@ import { getClientByUserId } from "@/lib/dashboard";
 import { getClientLoanSchedule, formatCurrencyFromGhs } from "@/lib/dashboard";
 import { PageHeader, ModernCard, DataTable } from "@/components/dashboard";
 import { LoanScheduleExportButtons } from "./LoanScheduleExportButtons";
+import { LoanPaymentStatusBadge } from "@/components/dashboard/LoanPaymentStatusBadge";
+import { formatRepaymentFrequency } from "@/lib/repayment-frequency";
+import type { PaymentStatus } from "@prisma/client";
 
 export default async function ClientLoansPage() {
   const session = await getServerSession(authOptions);
@@ -32,7 +35,7 @@ export default async function ClientLoansPage() {
     { key: "dueDate", header: "Due Date", render: (r: { dueDate: Date }) => new Date(r.dueDate).toLocaleDateString("en-GB") },
     { key: "totalDue", header: "Total Due", render: (r: { totalDue: number }) => formatCurrencyFromGhs(r.totalDue, display) },
     { key: "amountPaid", header: "Amount Paid", render: (r: { amountPaid: number }) => formatCurrencyFromGhs(r.amountPaid, display) },
-    { key: "paymentStatus", header: "Status", render: (r: { paymentStatus: string }) => <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.paymentStatus === "paid" ? "bg-green-100 text-green-800 dark:bg-green-900/40" : "bg-amber-100 text-amber-800 dark:bg-amber-900/40"}`}>{r.paymentStatus}</span> },
+    { key: "paymentStatus", header: "Status", render: (r: { paymentStatus: PaymentStatus }) => <LoanPaymentStatusBadge status={r.paymentStatus} /> },
     { key: "paymentDate", header: "Paid On", render: (r: { paymentDate: Date | null }) => r.paymentDate ? new Date(r.paymentDate).toLocaleDateString("en-GB") : "—" },
   ];
 
@@ -64,7 +67,7 @@ export default async function ClientLoansPage() {
               </>
             )}
             <dt className="text-gray-500 dark:text-gray-400">Repayment</dt>
-            <dd>{pendingDisbursement.repaymentFrequency === "weekly" ? "Weekly" : "Monthly"}</dd>
+            <dd>{formatRepaymentFrequency(pendingDisbursement.repaymentFrequency)}</dd>
             {pendingDisbursement.approvalDate && (
               <>
                 <dt className="text-gray-500 dark:text-gray-400">Approved on</dt>

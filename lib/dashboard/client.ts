@@ -9,6 +9,7 @@ import type {
   ClientCycleWithDetails,
   DailyCollectionRow,
 } from "@/types/dashboard";
+import { effectivePaymentStatus } from "@/lib/loan-payment-status";
 import { Decimal } from "@prisma/client/runtime/library";
 
 function toNum(d: Decimal | number | null | undefined): number {
@@ -502,7 +503,7 @@ export async function getClientLoanSchedule(clientId: number) {
       dueDate: p.dueDate,
       totalDue: toNum(p.totalDue),
       amountPaid: toNum(p.amountPaid),
-      paymentStatus: p.paymentStatus,
+      paymentStatus: effectivePaymentStatus(p.paymentStatus, p.dueDate),
       paymentDate: p.paymentDate,
     })),
     pendingDisbursement: null,

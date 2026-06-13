@@ -77,6 +77,7 @@ enum ApplicationStatus {
 }
 
 enum RepaymentFrequency {
+  daily
   weekly
   monthly
 }
@@ -441,7 +442,7 @@ model LoanApplication {
   loanProductId        Int               @map("loan_product_id")
   requestedAmount     Decimal           @map("requested_amount") @db.Decimal(18, 2)
   requestedTermMonths  Int               @map("requested_term_months")
-  repaymentFrequency  RepaymentFrequency @default(monthly) @map("repayment_frequency")
+  repaymentFrequency  RepaymentFrequency @default(daily) @map("repayment_frequency")
   purpose             String            @db.Text
   guarantorName       String?           @map("guarantor_name") @db.VarChar(100)
   guarantorPhone      String?           @map("guarantor_phone") @db.VarChar(20)

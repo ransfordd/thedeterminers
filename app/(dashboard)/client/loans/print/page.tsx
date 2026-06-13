@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { getCurrencyDisplay } from "@/lib/system-settings";
 import { getClientByUserId } from "@/lib/dashboard";
 import { getClientLoanSchedule, formatCurrencyFromGhs } from "@/lib/dashboard";
+import { paymentStatusLabel } from "@/lib/loan-payment-status";
 import { PrintButton } from "./PrintButton";
 import { prisma } from "@/lib/db";
 
@@ -135,7 +136,7 @@ export default async function ClientLoanSchedulePrintPage() {
                     <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{new Date(p.dueDate).toLocaleDateString("en-GB")}</td>
                     <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{formatCurrencyFromGhs(p.totalDue, display)}</td>
                     <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{formatCurrencyFromGhs(p.amountPaid, display)}</td>
-                    <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{p.paymentStatus}</td>
+                    <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">{paymentStatusLabel(p.paymentStatus)}</td>
                     <td className="py-2 px-3 text-gray-900 dark:text-gray-100 print:text-black">
                       {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString("en-GB") : "—"}
                     </td>

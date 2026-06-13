@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
-import { addDaysUtc, toUtcDateOnly } from "@/lib/loan-schedule";
+import { addDaysUtc, toUtcDateOnly } from "@/lib/business-days";
 import { applyLoanInstallmentPayment } from "@/lib/loan-payment-apply";
+import { daysOverdueForPayment } from "@/lib/loan-payment-status";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -14,6 +15,7 @@ export async function runLoanRepaymentCron(now: Date = new Date()) {
   const errors: string[] = [];
   let reminders = 0;
   let autoDeductions = 0;
+  let overdueMarked = 0;
 
   const dueToday = await prisma.loanPayment.findMany({
     where: {
@@ -92,14 +94,47 @@ export async function runLoanRepaymentCron(now: Date = new Date()) {
     else errors.push(`auto payment ${p.id}: ${res.error}`);
   }
 
-  await prisma.loanPayment.updateMany({
+  const pastDueOpen = await prisma.loanPayment.findMany({
     where: {
       dueDate: { lt: today },
       paymentStatus: { in: ["pending", "partial"] },
       loan: { loanStatus: "active" },
     },
-    data: { paymentStatus: "overdue" },
+    include: {
+      loan: { include: { client: { include: { user: true } } } },
+    },
   });
 
-  return { reminders, autoDeductions, errors };
+  for (const p of pastDueOpen) {
+    const daysOverdue = daysOverdueForPayment(p.dueDate, today);
+    const wasPending = p.paymentStatus !== "overdue";
+    try {
+      await prisma.loanPayment.update({
+        where: { id: p.id },
+        data: { paymentStatus: "overdue", daysOverdue },
+      });
+      overdueMarked += 1;
+
+      if (wasPending) {
+        const userId = p.loan.client.userId;
+        const bal = round2(Number(p.totalDue) - Number(p.amountPaid));
+        if (bal > 0) {
+          await prisma.notification.create({
+            data: {
+              userId,
+              notificationType: "payment_overdue",
+              title: "Loan payment overdue",
+              message: `Loan ${p.loan.loanNumber}: installment #${p.paymentNumber} — GHS ${bal.toFixed(2)} was due ${daysOverdue} day(s) ago.`,
+              relatedId: p.id,
+              relatedType: "payment",
+            },
+          });
+        }
+      }
+    } catch (e) {
+      errors.push(`overdue payment ${p.id}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  return { reminders, autoDeductions, overdueMarked, errors };
 }

@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildPremiumSms, sendSmsToUserIds } from "@/lib/sms";
 import { Decimal } from "@prisma/client/runtime/library";
+import { parseRepaymentFrequency } from "@/lib/repayment-frequency";
 
 export type ApplicationState = { success?: boolean; error?: string; applicationNumber?: string };
 
@@ -32,8 +33,7 @@ export async function createLoanApplication(
   const loanProductId = parseInt((formData.get("loanProductId") as string) ?? "0", 10);
   const requestedAmount = parseFloat((formData.get("requestedAmount") as string) ?? "0");
   const requestedTermMonths = parseInt((formData.get("requestedTermMonths") as string) ?? "0", 10);
-  const repaymentFrequency =
-    (formData.get("repaymentFrequency") as string)?.trim() === "weekly" ? "weekly" : "monthly";
+  const repaymentFrequency = parseRepaymentFrequency(formData.get("repaymentFrequency"));
   const purpose = (formData.get("purpose") as string)?.trim();
   const guarantorName = (formData.get("guarantorName") as string)?.trim() || null;
   const guarantorPhone = (formData.get("guarantorPhone") as string)?.trim() || null;

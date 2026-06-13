@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { publicProfileImageUrl } from "@/lib/profile-image-url";
+import { toUtcDateOnly } from "@/lib/business-days";
 import type { Prisma } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
@@ -239,14 +240,27 @@ export async function getAgentsFilterOptions(): Promise<
 
 /** Admin: active loans list with client and product info */
 export async function getActiveLoansList() {
-  const loans = await prisma.loan.findMany({
-    where: { loanStatus: "active" },
-    orderBy: { maturityDate: "asc" },
-    include: {
-      client: { include: { user: true } },
-      product: true,
-    },
-  });
+  const today = toUtcDateOnly(new Date());
+  const [loans, overduePayments] = await Promise.all([
+    prisma.loan.findMany({
+      where: { loanStatus: "active" },
+      orderBy: { maturityDate: "asc" },
+      include: {
+        client: { include: { user: true } },
+        product: true,
+      },
+    }),
+    prisma.loanPayment.findMany({
+      where: {
+        dueDate: { lt: today },
+        paymentStatus: { in: ["pending", "partial", "overdue"] },
+        loan: { loanStatus: "active" },
+      },
+      select: { loanId: true },
+      distinct: ["loanId"],
+    }),
+  ]);
+  const overdueLoanIds = new Set(overduePayments.map((p) => p.loanId));
   return loans.map((l) => ({
     id: l.id,
     loanNumber: l.loanNumber,
@@ -260,6 +274,7 @@ export async function getActiveLoansList() {
     maturityDate: l.maturityDate,
     lastPaymentDate: l.lastPaymentDate,
     nextPaymentDate: l.nextPaymentDate,
+    hasOverdueInstallment: overdueLoanIds.has(l.id),
   }));
 }
 

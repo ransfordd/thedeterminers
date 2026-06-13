@@ -7,13 +7,10 @@ import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
 import type { DisbursementMethod } from "@prisma/client";
 import {
-  buildDueDates,
-  computeInstallmentBreakdown,
-  firstDueDateFromDisbursement,
-  installmentCountForTerm,
+  buildLoanSchedule,
   toUtcDateOnly,
-  totalRepaymentFromInstallments,
 } from "@/lib/loan-schedule";
+import { loadHolidaySet } from "@/lib/holidays";
 import { formatAmountForDisplay } from "@/lib/currency";
 import { notifyClientByClientIdPremiumSms } from "@/lib/sms";
 
@@ -66,20 +63,18 @@ export async function disburseApprovedLoan(_prev: DisburseState, formData: FormD
   if (!Number.isFinite(principal) || principal <= 0) return { error: "Invalid approved amount" };
   if (!termMonths || termMonths < 1) return { error: "Invalid term" };
 
-  const n = installmentCountForTerm(termMonths, frequency);
-  const firstDue = firstDueDateFromDisbursement(disbursementDate, frequency);
-  const dueDates = buildDueDates(firstDue, n, frequency);
-  const lastDue = dueDates[dueDates.length - 1]!;
-
-  const rows = computeInstallmentBreakdown(
-    new Decimal(principal),
-    new Decimal(application.product.interestRate.toString()),
-    application.product.interestType,
+  const holidays = await loadHolidaySet();
+  const schedule = buildLoanSchedule({
+    principal,
+    annualRatePercent: Number(application.product.interestRate),
+    interestType: application.product.interestType,
     termMonths,
-    n,
-    frequency
-  );
-  const totalRepayment = totalRepaymentFromInstallments(rows);
+    frequency,
+    disbursementDate,
+    holidays,
+  });
+  const { installmentCount: n, firstDue, dueDates, rows, totalRepayment } = schedule;
+  const lastDue = dueDates[dueDates.length - 1]!;
   const perInstallment = rows[0]!.totalDue;
 
   let loanNumber = generateLoanNumber();

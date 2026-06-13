@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     ok: true,
     reminders: result.reminders,
     autoDeductions: result.autoDeductions,
+    overdueMarked: result.overdueMarked,
     errors: result.errors,
   });
 }
