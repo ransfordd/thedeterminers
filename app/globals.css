@@ -120,3 +120,38 @@ html.dark body {
   outline: 2px solid #667eea;
   outline-offset: 2px;
 }
+
+/* Login: shared-phone account picker — custom radio check indicator */
+.login-account-check {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  background-color: #fff;
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.login-account-option:hover .login-account-check {
+  border-color: #667eea;
+}
+.login-account-option:has(input:checked) .login-account-check {
+  border-color: #667eea;
+  background-color: #667eea;
+}
+.login-account-option:has(input:checked) .login-account-check::after {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0.35rem;
+  top: 0.15rem;
+  width: 0.3rem;
+  height: 0.55rem;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.login-account-option:has(input:focus-visible) {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}

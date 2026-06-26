@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { phoneMatchVariants, userMatchesIdentifier } from "@/lib/phone-format";
+import { publicProfileImageUrl } from "@/lib/profile-image-url";
 
 export type LoginAccountOption = {
   id: number;
@@ -8,6 +9,7 @@ export type LoginAccountOption = {
   lastName: string;
   username: string;
   role: string;
+  profileImage: string | null;
 };
 
 export { phoneMatchVariants, storagePhone, isPhoneLikeIdentifier, userMatchesIdentifier } from "@/lib/phone-format";
@@ -30,6 +32,7 @@ export async function findActiveUsersByPhone(
       lastName: true,
       username: true,
       role: true,
+      profileImage: true,
     },
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }, { id: "asc" }],
   });
@@ -40,5 +43,6 @@ export async function findActiveUsersByPhone(
     lastName: u.lastName,
     username: u.username,
     role: u.role,
+    profileImage: publicProfileImageUrl(u.profileImage),
   }));
 }

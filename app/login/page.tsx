@@ -9,6 +9,7 @@ import {
   type LoginLookupState,
 } from "@/app/actions/login-lookup";
 import type { LoginAccountOption } from "@/lib/login-phone";
+import { LoginAccountPicker } from "@/components/auth/LoginAccountPicker";
 import { isPhoneLikeIdentifier } from "@/lib/phone-format";
 
 function LoginForm() {
@@ -197,47 +198,14 @@ function LoginForm() {
               </div>
 
               {needsPicker && phoneAccounts.length > 1 && (
-                <div className="rounded-xl border border-[#667eea]/30 bg-white p-4 space-y-3">
-                  <p className="text-sm font-medium text-gray-800">
-                    Several accounts share this phone number. Select yours:
-                  </p>
-                  <ul className="space-y-2">
-                    {phoneAccounts.map((account) => {
-                      const label = `${account.firstName} ${account.lastName}`.trim();
-                      const checked = selectedUserId === account.id;
-                      return (
-                        <li key={account.id}>
-                          <label
-                            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                              checked
-                                ? "border-[#667eea] bg-[#667eea]/5"
-                                : "border-gray-200 hover:border-[#667eea]/50"
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="loginAccount"
-                              value={account.id}
-                              checked={checked}
-                              onChange={() => {
-                                setSelectedUserId(account.id);
-                                setError("");
-                              }}
-                              className="mt-1"
-                            />
-                            <span>
-                              <span className="block font-medium text-gray-900">{label}</span>
-                              <span className="block text-sm text-gray-500">@{account.username}</span>
-                            </span>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <p className="text-xs text-gray-500">
-                    Each account has its own password.
-                  </p>
-                </div>
+                <LoginAccountPicker
+                  accounts={phoneAccounts}
+                  selectedUserId={selectedUserId}
+                  onSelect={(id) => {
+                    setSelectedUserId(id);
+                    setError("");
+                  }}
+                />
               )}
 
               <div>
