@@ -7,6 +7,7 @@ import { hash } from "bcryptjs";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getSecuritySettings } from "@/lib/system-settings";
+import { storagePhone } from "@/lib/phone-format";
 
 export interface CreateClientState {
   error?: string;
@@ -98,7 +99,7 @@ export async function createClient(
         role: "client",
         firstName,
         lastName,
-        phone,
+        phone: storagePhone(phone),
         address: null,
         status: "active",
       },
@@ -237,7 +238,7 @@ export async function updateClient(
         firstName,
         lastName,
         email,
-        phone: phone ?? undefined,
+        phone: phone != null ? storagePhone(phone) : undefined,
         address: address ?? undefined,
         middleName: middleName ?? undefined,
         dateOfBirth: dateOfBirth ?? undefined,

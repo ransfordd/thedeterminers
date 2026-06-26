@@ -3,7 +3,13 @@
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
+import {
+  lookupLoginAccountsByPhone,
+  type LoginLookupState,
+} from "@/app/actions/login-lookup";
+import type { LoginAccountOption } from "@/lib/login-phone";
+import { isPhoneLikeIdentifier } from "@/lib/phone-format";
 
 function LoginForm() {
   const router = useRouter();
@@ -15,19 +21,106 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [phoneAccounts, setPhoneAccounts] = useState<LoginAccountOption[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [needsPicker, setNeedsPicker] = useState(false);
+
+  const resetPhoneLookup = useCallback(() => {
+    setPhoneAccounts([]);
+    setSelectedUserId(null);
+    setNeedsPicker(false);
+  }, []);
+
+  async function runPhoneLookup(phone: string): Promise<LoginLookupState> {
+    setLookupLoading(true);
+    try {
+      return await lookupLoginAccountsByPhone(phone);
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
+  async function handleIdentifierBlur() {
+    const trimmed = usernameOrEmail.trim();
+    if (!isPhoneLikeIdentifier(trimmed)) {
+      resetPhoneLookup();
+      return;
+    }
+    const result = await runPhoneLookup(trimmed);
+    if (result.error) {
+      setError(result.error);
+      resetPhoneLookup();
+      return;
+    }
+    const accounts = result.accounts ?? [];
+    setPhoneAccounts(accounts);
+    if (accounts.length > 1) {
+      setNeedsPicker(true);
+      setSelectedUserId(null);
+    } else {
+      setNeedsPicker(false);
+      setSelectedUserId(accounts.length === 1 ? accounts[0]!.id : null);
+    }
+  }
+
+  function handleIdentifierChange(value: string) {
+    setUsernameOrEmail(value);
+    setError("");
+    if (!isPhoneLikeIdentifier(value.trim())) {
+      resetPhoneLookup();
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
+      const trimmed = usernameOrEmail.trim();
+      let userIdForSignIn = selectedUserId;
+
+      if (isPhoneLikeIdentifier(trimmed)) {
+        let accounts = phoneAccounts;
+        if (accounts.length === 0) {
+          const result = await runPhoneLookup(trimmed);
+          if (result.error) {
+            setError(result.error);
+            setLoading(false);
+            return;
+          }
+          accounts = result.accounts ?? [];
+          setPhoneAccounts(accounts);
+        }
+
+        if (accounts.length > 1) {
+          setNeedsPicker(true);
+          if (!userIdForSignIn) {
+            setError("This phone number is linked to several accounts. Select yours, then enter your password.");
+            setLoading(false);
+            return;
+          }
+        } else if (accounts.length === 1) {
+          userIdForSignIn = accounts[0]!.id;
+        }
+      } else {
+        resetPhoneLookup();
+      }
+
       const res = await signIn("credentials", {
-        usernameOrEmail: usernameOrEmail.trim(),
+        usernameOrEmail: trimmed,
         password,
+        ...(userIdForSignIn != null ? { selectedUserId: String(userIdForSignIn) } : {}),
         redirect: false,
       });
+
       if (res?.error) {
-        setError("Invalid email, username, phone or password.");
+        if (needsPicker && phoneAccounts.length > 1 && !selectedUserId) {
+          setError("Select your account, then enter your password.");
+        } else {
+          setError("Invalid email, username, phone or password.");
+        }
         setLoading(false);
         return;
       }
@@ -41,7 +134,6 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen w-full bg-[#667eea] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Back to Home - pill-shaped, light background, dark text (match previous site) */}
       <div className="absolute top-8 left-8 z-10">
         <Link
           href="/"
@@ -53,7 +145,6 @@ function LoginForm() {
 
       <div className="w-full max-w-[420px] relative z-[1] animate-slide-up">
         <div className="bg-white rounded-[20px] shadow-[0_20px_40px_rgba(0,0,0,0.1)] overflow-hidden">
-          {/* Header - purple strip with shield, Welcome Back, subtitle */}
           <div className="bg-[#667eea] text-white px-8 pt-12 pb-8 text-center">
             <div className="text-5xl mb-6 opacity-95">
               <i className="fas fa-shield-alt" />
@@ -64,7 +155,6 @@ function LoginForm() {
             </p>
           </div>
 
-          {/* Form area - light gray #fafbfc */}
           <div className="p-6 bg-[#fafbfc]">
             {success === "1" && (
               <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200 text-sm">
@@ -93,12 +183,62 @@ function LoginForm() {
                   id="usernameOrEmail"
                   type="text"
                   value={usernameOrEmail}
-                  onChange={(e) => setUsernameOrEmail(e.target.value)}
+                  onChange={(e) => handleIdentifierChange(e.target.value)}
+                  onBlur={handleIdentifierBlur}
                   required
                   placeholder="Email, username or phone number"
                   className="login-input w-full border-2 border-[#667eea]/80 rounded-[10px] px-4 py-3.5 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/20 outline-none transition-all"
                 />
+                {lookupLoading && (
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    <i className="fas fa-spinner fa-spin mr-1" /> Checking phone number…
+                  </p>
+                )}
               </div>
+
+              {needsPicker && phoneAccounts.length > 1 && (
+                <div className="rounded-xl border border-[#667eea]/30 bg-white p-4 space-y-3">
+                  <p className="text-sm font-medium text-gray-800">
+                    Several accounts share this phone number. Select yours:
+                  </p>
+                  <ul className="space-y-2">
+                    {phoneAccounts.map((account) => {
+                      const label = `${account.firstName} ${account.lastName}`.trim();
+                      const checked = selectedUserId === account.id;
+                      return (
+                        <li key={account.id}>
+                          <label
+                            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                              checked
+                                ? "border-[#667eea] bg-[#667eea]/5"
+                                : "border-gray-200 hover:border-[#667eea]/50"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="loginAccount"
+                              value={account.id}
+                              checked={checked}
+                              onChange={() => {
+                                setSelectedUserId(account.id);
+                                setError("");
+                              }}
+                              className="mt-1"
+                            />
+                            <span>
+                              <span className="block font-medium text-gray-900">{label}</span>
+                              <span className="block text-sm text-gray-500">@{account.username}</span>
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p className="text-xs text-gray-500">
+                    Each account has its own password.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label htmlFor="password" className="flex items-center gap-2 text-gray-800 font-normal text-[0.95rem] mb-2">
@@ -141,7 +281,7 @@ function LoginForm() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || lookupLoading}
                 className="w-full flex items-center justify-center gap-2 bg-[#667eea] hover:bg-[#5568d3] disabled:opacity-70 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-6 rounded-[10px] transition-all"
               >
                 {loading ? (
@@ -157,7 +297,6 @@ function LoginForm() {
             </form>
           </div>
 
-          {/* Footer - light gray #f8f9fa, border-top, match previous site */}
           <div className="py-5 px-6 text-center border-t border-[#e9ecef]" style={{ background: "#f8f9fa" }}>
             <p className="text-[#6c757d] text-[0.95rem] mb-0">
               Don&apos;t have an account?{" "}
@@ -168,7 +307,6 @@ function LoginForm() {
           </div>
         </div>
       </div>
-
     </div>
   );
 }

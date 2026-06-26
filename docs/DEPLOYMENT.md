@@ -69,7 +69,17 @@ Or use Coolify’s backup feature if configured.
 - [ ] Admin login works
 - [ ] **Client Management** — existing clients still listed
 - [ ] **Transactions** or **Active Loans** — known records still visible
-- [ ] Optional: impersonate a client → **Loan Schedule** shows expected data
+- [ ] Optional: two clients with the **same phone** can each log in via the account picker
+
+### User.phone and shared numbers
+
+`User.phone` is **not** unique in the Prisma schema. Multiple accounts may share one phone. If signup ever fails on duplicate phone on production, check for a manual unique index:
+
+```sql
+SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'User' AND indexdef ILIKE '%phone%';
+```
+
+Drop any unique index on `phone` if present. Login uses an account picker when several users share a number.
 
 ---
 

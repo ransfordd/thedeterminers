@@ -5,6 +5,11 @@ import { compare } from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { logActivity } from "@/lib/activity-log";
 import { normalizePhone } from "@/lib/sms";
+import {
+  findActiveUsersByPhone,
+  isPhoneLikeIdentifier,
+  userMatchesIdentifier,
+} from "@/lib/login-phone";
 import { verifyImpersonationToken } from "@/lib/impersonate";
 import { getSecuritySettings } from "@/lib/system-settings";
 import { publicProfileImageUrl } from "@/lib/profile-image-url";
@@ -37,6 +42,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         usernameOrEmail: { label: "Email, username or phone", type: "text" },
         password: { label: "Password", type: "password" },
+        selectedUserId: { label: "Selected user id", type: "text" },
         impersonationToken: { label: "Impersonation token", type: "text" },
       },
       async authorize(credentials) {
@@ -84,16 +90,40 @@ export const authOptions: NextAuthOptions = {
         const phoneConditions = [{ phone: input }];
         const normalized = normalizePhone(input);
         if (normalized) phoneConditions.push({ phone: normalized });
-        const user = await prisma.user.findFirst({
-          where: {
-            status: "active",
-            OR: [
-              { email: { equals: input, mode: "insensitive" } },
-              { username: { equals: input, mode: "insensitive" } },
-              ...phoneConditions,
-            ],
-          },
-        });
+
+        const selectedUserIdRaw = credentials?.selectedUserId as string | undefined;
+        const selectedUserId = selectedUserIdRaw ? parseInt(selectedUserIdRaw, 10) : NaN;
+
+        let user: Awaited<ReturnType<typeof prisma.user.findFirst>> = null;
+
+        if (selectedUserId && !isNaN(selectedUserId)) {
+          const selected = await prisma.user.findFirst({
+            where: { id: selectedUserId, status: "active" },
+          });
+          if (selected && userMatchesIdentifier(selected, input)) {
+            user = selected;
+          }
+        } else if (isPhoneLikeIdentifier(input)) {
+          const phoneMatches = await findActiveUsersByPhone(input);
+          if (phoneMatches.length === 1) {
+            user = await prisma.user.findFirst({
+              where: { id: phoneMatches[0]!.id, status: "active" },
+            });
+          } else if (phoneMatches.length > 1) {
+            user = null;
+          }
+        } else {
+          user = await prisma.user.findFirst({
+            where: {
+              status: "active",
+              OR: [
+                { email: { equals: input, mode: "insensitive" } },
+                { username: { equals: input, mode: "insensitive" } },
+                ...phoneConditions,
+              ],
+            },
+          });
+        }
 
         const recordFailedAttempt = async () => {
           if (!lockoutDbAvailable) return;

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Decimal } from "@prisma/client/runtime/library";
 import { getSecuritySettings } from "@/lib/system-settings";
+import { storagePhone } from "@/lib/phone-format";
 
 export type SignupState = { error?: string };
 
@@ -68,7 +69,7 @@ export async function signupClient(prev: SignupState, formData: FormData): Promi
           role: "client",
           firstName,
           lastName,
-          phone: phone || "N/A",
+          phone: storagePhone(phone) || "N/A",
           address: residentialAddress ?? undefined,
           postalAddress: residentialAddress ?? undefined,
           city: city ?? undefined,
