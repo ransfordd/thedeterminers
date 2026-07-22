@@ -192,14 +192,16 @@ export function NewClientForm({ agents }: { agents: AgentOption[] }) {
             min="0"
             defaultValue="20"
             required={depositType === "fixed_amount"}
-            disabled={depositType === "flexible_amount"}
+            readOnly={depositType === "flexible_amount"}
             ref={(el) => {
               dailyAmountRef.current = el;
             }}
             onChange={(e) => {
               if (depositType === "fixed_amount") fixedAmountRef.current = e.target.value;
             }}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
+            className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 ${
+              depositType === "flexible_amount" ? "bg-gray-100 dark:bg-gray-700/60 cursor-default" : ""
+            }`}
           />
           {depositType === "flexible_amount" ? (
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">

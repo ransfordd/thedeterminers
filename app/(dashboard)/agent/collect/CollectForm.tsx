@@ -4,18 +4,10 @@ import { useState, useEffect, type FormEvent } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { recordCollection, type CollectState } from "@/app/actions/collect";
-import { formatCurrencyFromGhs } from "@/lib/dashboard";
 import { useCurrencyDisplay } from "@/components/dashboard/CurrencyContext";
+import { ClientSearchSelect, type CollectClientOption } from "./ClientSearchSelect";
 
 const initialState: CollectState = {};
-
-type ClientOption = {
-  id: number;
-  clientCode: string;
-  name: string;
-  dailyAmount: number;
-  depositType: string;
-};
 
 const inputClass =
   "login-input w-full border border-[#e1e5e9] rounded-[10px] px-3 py-2.5 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/20 outline-none transition-all";
@@ -41,7 +33,7 @@ export function CollectForm({
   initialAccountType = "susu",
   initialSusuAmount,
 }: {
-  clients: ClientOption[];
+  clients: CollectClientOption[];
   onClientSelect?: (clientId: number | null) => void;
   initialClientId?: number;
   initialAccountType?: string;
@@ -49,7 +41,9 @@ export function CollectForm({
 }) {
   const display = useCurrencyDisplay();
   const [state, formAction] = useActionState(recordCollection, initialState);
-  const [accountType, setAccountType] = useState<string>(initialAccountType === "loan" || initialAccountType === "both" ? initialAccountType : "susu");
+  const [accountType, setAccountType] = useState<string>(
+    initialAccountType === "loan" || initialAccountType === "both" ? initialAccountType : "susu",
+  );
   const [clientId, setClientId] = useState<string>(initialClientId != null ? String(initialClientId) : "");
   const today = new Date().toISOString().slice(0, 10);
 
@@ -58,6 +52,10 @@ export function CollectForm({
 
   const handleBeforeSubmit = (event: FormEvent<HTMLFormElement>) => {
     if (!(accountType === "susu" || accountType === "both")) return;
+    if (!clientId) {
+      event.preventDefault();
+      return;
+    }
     const selectedClient = clients.find((c) => String(c.id) === clientId);
     if (!selectedClient || selectedClient.depositType !== "fixed_amount") return;
 
@@ -78,7 +76,7 @@ export function CollectForm({
       `This client saves GHS ${selectedClient.dailyAmount.toFixed(2)} per day.\n` +
         `You entered GHS ${susuAmount.toFixed(2)}.\n\n` +
         `GHS ${cyclePart.toFixed(2)} will be recorded into the Susu cycle, and ` +
-        `GHS ${savingsPart.toFixed(2)} will go to savings.\n\nContinue?`
+        `GHS ${savingsPart.toFixed(2)} will go to savings.\n\nContinue?`,
     );
     if (!proceed) {
       event.preventDefault();
@@ -109,26 +107,13 @@ export function CollectForm({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="clientId" className={labelClass}>
-            Select Client <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="clientId"
-            name="clientId"
-            required
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">Select client...</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.clientCode} – {c.name} ({formatCurrencyFromGhs(c.dailyAmount, display)}/day)
-              </option>
-            ))}
-          </select>
-        </div>
+        <ClientSearchSelect
+          clients={clients}
+          value={clientId}
+          onChange={setClientId}
+          inputClassName={inputClass}
+          labelClassName={labelClass}
+        />
         <div>
           <label htmlFor="accountType" className={labelClass}>
             Account Type <span className="text-red-500">*</span>
@@ -179,7 +164,9 @@ export function CollectForm({
             />
           </div>
           <div>
-            <label htmlFor="collectionDate" className={labelClass}>Collection date</label>
+            <label htmlFor="collectionDate" className={labelClass}>
+              Collection date
+            </label>
             <input
               id="collectionDate"
               name="collectionDate"
@@ -208,7 +195,9 @@ export function CollectForm({
             />
           </div>
           <div>
-            <label htmlFor="paymentDate" className={labelClass}>Payment date</label>
+            <label htmlFor="paymentDate" className={labelClass}>
+              Payment date
+            </label>
             <input
               id="paymentDate"
               name="paymentDate"
@@ -221,7 +210,9 @@ export function CollectForm({
       )}
 
       <div>
-        <label htmlFor="receiptNumber" className={labelClass}>Receipt Number</label>
+        <label htmlFor="receiptNumber" className={labelClass}>
+          Receipt Number
+        </label>
         <input
           id="receiptNumber"
           name="receiptNumber"
@@ -231,7 +222,9 @@ export function CollectForm({
         />
       </div>
       <div>
-        <label htmlFor="notes" className={labelClass}>Notes</label>
+        <label htmlFor="notes" className={labelClass}>
+          Notes
+        </label>
         <textarea
           id="notes"
           name="notes"

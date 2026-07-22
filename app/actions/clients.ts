@@ -58,11 +58,16 @@ export async function createClient(
     if (!parsed || isNaN(parsed)) return { error: "Please select an agent." };
     agentId = parsed;
   }
-  const parsedDailyDepositAmount = dailyDepositAmountRaw ? Number(dailyDepositAmountRaw) : NaN;
-  if (!Number.isFinite(parsedDailyDepositAmount) || parsedDailyDepositAmount < 0) {
-    return { error: "Daily deposit amount must be a valid number (e.g. 20)." };
+  let dailyDepositAmount: number;
+  if (depositType === "flexible_amount") {
+    dailyDepositAmount = 0;
+  } else {
+    const parsedDailyDepositAmount = dailyDepositAmountRaw ? Number(dailyDepositAmountRaw) : NaN;
+    if (!Number.isFinite(parsedDailyDepositAmount) || parsedDailyDepositAmount < 0) {
+      return { error: "Daily deposit amount must be a valid number (e.g. 20)." };
+    }
+    dailyDepositAmount = Number(parsedDailyDepositAmount.toFixed(2));
   }
-  const dailyDepositAmount = Number(parsedDailyDepositAmount.toFixed(2));
 
   const existingUser = await prisma.user.findFirst({
     where: { OR: [{ email }, { username }] },
